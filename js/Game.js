@@ -12,19 +12,15 @@ const tileSize = 64;
 // Width in pixels of the textures used for fonts
 const fontSize =  24;
 
- // Socket for interactions with the server
- var socket = io();
- socket.emit('request', 'new map');
- socket.on('map', function(map) {
-     var str = "";
-     for (var y = 0; y < 30; y++) {
-         for (var x = 0; x < 30; x++) {
-             str += map[x+","+y];
-         }
-         str += "\n";
-     }
-     console.log(str);
- });
+// Socket for interactions with the server
+var socket = io();
+
+var rogue;
+
+// Map sprites stores all the map sprites currently drawn on the screen
+// Map alpha stores the opacity for each individual tile that handles the FOV effect
+var mapSprites = [], mapAlpha = [];
+
 
 // Aliases
 var Application = PIXI.Application,
@@ -63,20 +59,12 @@ var renderer = PIXI.autoDetectRenderer(appWidth, appHeight, null);
 // Stores the game state used with PIXI.js
 var state = null;
 
-// rogue is where we store the Rogue class that contains all game logic
-var rogue = null;
-
-
 // Stores the player texture and can be used to make sure the map stored in rogue
 // has the same player position that is displayed on the screen.
 var player;
 // Stores the PIXI loader for all the map textures, except for open doors which I
 // patched in on the go and haven't had the chance to merge it into the spritesheet.
 var mapTiles, openDoorTexture;
-
-// Map sprites stores all the map sprites currently drawn on the screen
-// Map alpha stores the opacity for each individual tile that handles the FOV effect
-var mapSprites = [], mapAlpha = [];
 
 // PIXI can store sprites in a container. This allows all game sprites to be deleted
 // and redrawn easily after a player changes floors
@@ -90,6 +78,60 @@ let app = new Application({
     resolution: 1
 });
 
+
+socket.on('Dungeon', function(dungeon) {
+    var str = "";
+    for (var y = 0; y < 30; y++) {
+        for (var x = 0; x < 30; x++) {
+            str += dungeon.floors[dungeon.floorNumber].map[x+","+y];
+        }
+        str += "\n";
+    }
+    console.log(str);
+    console.log(dungeon);
+    rogue = dungeon;
+});
+socket.on('floor', function(data) {
+    console.log(data);
+    var str = "";
+    for (var y = 0; y < 30; y++) {
+        for (var x = 0; x < 30; x++) {
+            str += data.map[x+","+y];
+        }
+        str += "\n";
+    }
+    console.log(str);
+});
+socket.on('tileNames', function(tileNames) {
+    for (let y = 0; y < mapHeight; y++) {
+        for (let x = 0; x < mapWidth; x++) {
+            mapSprites[x+","+y] = placeTile(tileNames[x+','+y], x * tileSize, y * tileSize);
+        }
+    }
+
+    // sprite.alpha = 0.6 or similar value for explored map outside of current FOV
+    // eventually have updateFOV return mapArray that has alpha values for entire map
+    socket.emit('request', 'mapAlphaValues');
+});
+socket.on('mapAlphaValues', function(mapAlpha) {
+    for (var j = 0; j < mapHeight; j++) {
+        for (var i = 0; i < mapWidth; i++) {
+            var t = mapSprites[i+","+j];
+            if (t) {
+                //t.alpha = mapAlpha[i+","+j];
+                t.alpha = 1;
+            }
+        }
+    }
+    app.stage.addChild(gameTiles);
+    gameTiles.addChild(player);
+    renderer.render(app.stage);
+});
+
+ socket.emit('request', 'new game');
+
+
+
 // Texture loading of font and map sprite sheets.
 PIXI.loader
     .add('level', "assets/level_creatures.json")
@@ -102,9 +144,9 @@ function setup() {
     openDoorTexture =  PIXI.Texture.fromImage("assets/openDoor.png");
 
     // Create instance of the roguelike that handles a majority of the game
-    rogue = new Rogue(mapWidth, mapHeight);
+    //rogue = new Rogue(mapWidth, mapHeight);
     updateMap();
-    rogue.updatePlayerPosition(getPlayerX(), getPlayerY());
+    socket.emit('updatePlayerPosition', [getPlayerX(), getPlayerY()]);
 
     // If the site is being loaded from a mobile device, add touch screen arrow keys
     // and a button that appears when player is standing on stairs.
@@ -265,7 +307,7 @@ function setup() {
 }
 function gameLoop(delta) {
     // Update the current game state;
-    state(delta);
+    //state(delta);
 }
 function play(delta) {
     // Wait for player to perform an action to end the player's turn
@@ -337,17 +379,13 @@ function updateMap() {
         app.stage.removeChild(player);
     
     player = new Sprite(mapTiles["player"]);
-    player.position.set(tileSize*rogue.getCurrentFloor().playerX,
-                        tileSize*rogue.getCurrentFloor().playerY);
+    player.position.set(tileSize*rogue.floors[rogue.floorNumber].playerX,
+                        tileSize*rogue.floors[rogue.floorNumber].playerY);
     player.vx = 0;
     player.vy = 0;
     
-    renderMap();
+    socket.emit('request', 'tileNames');
 
-    
-    gameTiles.addChild(player);
-    app.stage.addChild(gameTiles);
-    renderer.render(app.stage);
     return true;
 }
 // Helper function to place tiles into the application using sprites from the spritesheet
@@ -364,93 +402,7 @@ function placeTile(tileName, x, y) {
     }
     return tile;
 }
-function renderMap() {
-    // Instead of placing individual tiles, store all tile sprites together in an array
-    // in the layout of map[x+","+y] with the key being tile coordinates. This will allow
-    // easier updating of an individual tiles alpha value.
-    var tileName = "";
-    var floorData = rogue.getCurrentFloor();
-    var map = floorData.getMap();
-    var mapData = ' ';
 
-    for (let y = 0; y < mapHeight; y++) {
-        for (let x = 0; x < mapWidth; x++) {
-            mapData = map[x+","+y];
-            switch (mapData) {
-                case ' ':
-                    tileName = ' ';
-                    break;
-                case '.':
-                    tileName = "floor_room";
-                    break;
-                case ',':
-                    tileName = "floor_hallway";
-                    break;
-                case '>':
-                    tileName = "stairs_down";
-                    break;
-                case '<':
-                    tileName = "stairs_up";
-                    break;
-                case '+':
-                    tileName = "door";
-                    break;
-                case '-':
-                    tileName = "openDoor";
-                    break;
-                case '#':
-                    // Surround Tiles is an array of the results from checking if the tiles surrounding a wall are in rooms or not.
-                    // Each direction is used twice so wanted to reduce the number of calls to inRoom
-                    // Order is in 0)N, 1)S, 2)E, 3)W, 4)NE, 5)NW, 6)SE, 7)SW
-                    var surroundingTiles = [floorData.inRoom(x,(y-1)), floorData.inRoom(x,(y+1)), floorData.inRoom((x+1),y), floorData.inRoom((x-1),y),
-                                            floorData.inRoom((x+1),(y-1)), floorData.inRoom((x-1),(y-1)), floorData.inRoom((x+1),(y+1)), floorData.inRoom((x-1),(y+1)) ];
-                    tileName = "";
-                    if (!surroundingTiles[0] && (surroundingTiles[2] + surroundingTiles[3] + surroundingTiles[4] + surroundingTiles[5])) {
-                        // If there is a room to the East or West of the wall, it's a wall that connects on the North and South side.
-                        tileName += "N";
-                    } else {
-                        tileName += "_";
-                    }
-
-                    if (!surroundingTiles[1] && (surroundingTiles[2] + surroundingTiles[3] + surroundingTiles[6] + surroundingTiles[7])){
-                        // If there is a room to the East or West of the wall, it's a wall that connects on the North and South side.
-                        tileName += "S";
-                    } else {
-                        tileName += "_";
-                    }
-                    if (!surroundingTiles[2] && (surroundingTiles[0] + surroundingTiles[1] + surroundingTiles[4] + surroundingTiles[6])) {
-                        // If there is a room to the East or West of the wall, it's a wall that connects on the North and South side.
-                        tileName += "E";
-                    } else {
-                        tileName += "_";
-                    }
-                    if (!surroundingTiles[3] && (surroundingTiles[0] + surroundingTiles[1] + surroundingTiles[5] + surroundingTiles[7])) {
-                        // If there is a room to the East or West of the wall, it's a wall that connects on the North and South side.
-                        tileName += "W";
-                    } else {
-                        tileName += "_";
-                    }
-                    break;
-                default:
-                    tileName = mapData;
-            }
-            mapSprites[x+","+y] = placeTile(tileName, x * tileSize, y * tileSize);
-        }
-    }
-
-    // sprite.alpha = 0.6 or similar value for explored map outside of current FOV
-    // eventually have updateFOV return mapArray that has alpha values for entire map
-    mapAlpha = rogue.mapAlphaValues();
-
-    for (var j = 0; j < mapHeight; j++) {
-        for (var i = 0; i < mapWidth; i++) {
-            var t = mapSprites[i+","+j];
-            if (t) {
-                t.alpha = mapAlpha[i+","+j];
-            }
-        }
-    }
-}
 // Returns the player's X value in relation to the map instead of pixels from the right
 // This gives the player's X position in terms the rogue class can understandpl
 function getPlayerX() {

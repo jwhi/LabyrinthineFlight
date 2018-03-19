@@ -13,24 +13,34 @@ app.get('/', function(req, res) {
 
 io.on('connection', function(socket) {
     console.log('a user connected');
+    var dungeon;
+
     socket.on('disconnect', function() {
         console.log('user disconnected.');
     });
     socket.on('request', function(data) {
-        console.log(data);
-        var rot = new Rogue();
-        var map = rot.generateMap();
-    
-        var str = "";
-        for (var y = 0; y < 30; y++) {
-            for (var x = 0; x < 30; x++) {
-                str += map[x+","+y];
-            }
-            str += "\n";
-        }
-        console.log(str);
-        socket.emit('map', map);
+            if (data === 'new game') {
+            dungeon = new Rogue.Dungeon();
+            var map = dungeon.getCurrentFloor().getMap();
         
+            var str = "";
+            for (var y = 0; y < 30; y++) {
+                for (var x = 0; x < 30; x++) {
+                    str += map[x+","+y];
+                }
+                str += "\n";
+            }
+            console.log(str);
+            socket.emit('Dungeon', dungeon);
+        } else if (data === 'tileNames') {
+            //console.log(floor);
+            socket.emit('tileNames', dungeon.getCurrentFloor().generateTileNames());
+        } else if (data === 'mapAlphaValues') {
+            socket.emit('mapAlphaValues', dungeon.mapAlphaValues());
+        }
+    });
+    socket.on('updatePlayerPosition', function(positions) {
+        dungeon.updatePlayerPosition(positions[0],positions[1]);
     });
 })
 
