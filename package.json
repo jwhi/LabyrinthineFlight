@@ -1,0 +1,11 @@
+{
+    "name": "Labyrinthine-Flight",
+    "version": "0.0.1",
+    "description": "Rogue-like game",
+    "dependencies": {
+        "express": "^4.16.3",
+        "rot-js": "^0.6.5",
+        "socket.io": "^2.0.4",
+        "sqlite3": "^4.0.0"
+    }
+}
