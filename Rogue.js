@@ -189,6 +189,9 @@ class Floor {
     setPlayerPosition(x, y) {
         this.playerX = x;
         this.playerY = y;
+        if (this.map[x+','+y] === '+') {
+            this.map[x+','+y] = '-';
+        }
     }
     getExploredMap() {
         return this.mapExplored;
