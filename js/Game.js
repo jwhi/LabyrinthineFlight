@@ -76,6 +76,14 @@ let app = new Application({
 
 socket.on('dungeon', function(dungeonFloor) {
     level = dungeonFloor;
+    var str = "";
+    for (var y = 0; y < mapHeight; y++) {
+        for (var x = 0; x < mapWidth; x++) {
+            str += level.map[x+','+y];
+        }
+        str += '\n';
+    }
+    console.log(str);
     updateMap();
     // Set the game state to play
     state = play;
@@ -478,6 +486,8 @@ function onButtonUp() {
 // stairs buttons for up or down so I figured I should too for desktop controls.
 // If no key is passed in, function just uses whatever tile at player's position
 function useStairs(keyPressed) {
+    // TODO: prevent player from moving after request for new floor is send. Maybe switch
+    // to a loading screen until new floor arrives.
     if (!keyPressed) {
         keyPressed = level.map[getPlayerX()+','+getPlayerY()];
     }

@@ -14,14 +14,19 @@ app.get('/', function(req, res) {
 io.on('connection', function(socket) {
     console.log('a user connected');
     var dungeon;
-
+    var seed;
     socket.on('disconnect', function() {
         console.log('user disconnected.');
     });
     socket.on('request', function(data) {
         switch(data) {
             case 'new game':
-                dungeon = new Rogue.Dungeon();
+                // Seed for the concurrent floors is based on the initial seed.
+                // Choosing a random number 1,000,000 less than max int so player
+                // has plenty of floors before they hit max int. Just needs to be a check
+                // but this is quick and planning on just being the implementation during testing.
+                seed = Math.floor(Math.random() * Math.floor(Number.MAX_SAFE_INTEGER - 1000000));
+                dungeon = new Rogue.Dungeon(seed);
                 socket.emit('dungeon', dungeon.getCurrentFloor());
                 break;
             case 'tileNames':

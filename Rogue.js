@@ -7,15 +7,20 @@ const playerFOVRadius = 8;
 const previouslyExploredAlpha = 0.4;
 
 class Dungeon {
-    constructor() {
+    constructor(seed) {
         this.floorNumber = 0;
         this.floors = [];
+        this.seed = seed;
+        ROT.RNG.setSeed(this.seed);
         this.floors[0] = new Floor(mapWidth, mapHeight, 0);
     }
     gotoFloor(floorNumber) {
         if (floorNumber < 0) return;
         if (!this.floors[floorNumber]) {
             // New level that needs to be created and stored.
+            // RNG for ROT set to initial seed + floorNumber
+            ROT.RNG.setSeed(this.seed + floorNumber);
+            console.log('Set seed to ' + this.seed);
             this.floors[floorNumber] = new Floor(mapWidth, mapHeight, floorNumber);
         }
         this.floorNumber = floorNumber;
@@ -125,15 +130,17 @@ class Floor {
             }
         }
 
-        var playerStartRoom = this.rooms[Math.floor(Math.random() * (this.rooms.length-1))];
+        //var playerStartRoom = this.rooms[Math.floor(Math.random() * (this.rooms.length-1))];
+        var playerStartRoom = this.rooms[0];
         this.playerX = playerStartRoom.getCenter()[0];
         this.playerY = playerStartRoom.getCenter()[1];
         if (this.levelNumber != 0) {
             this.map[this.playerX + "," + this.playerY] = "<";
         }
 
-        var stairsDownRoom = playerStartRoom;
-        while (stairsDownRoom == playerStartRoom) { stairsDownRoom = this.rooms[Math.floor(Math.random() * (this.rooms.length-1))]; }
+        //var stairsDownRoom = playerStartRoom;
+        //while (stairsDownRoom == playerStartRoom) { stairsDownRoom = this.rooms[Math.floor(Math.random() * (this.rooms.length-1))]; }
+        var stairsDownRoom = this.rooms[this.rooms.length-1];
         var stairsDown = stairsDownRoom.getCenter();
         this.map[stairsDown[0] + "," +stairsDown[1]] = ">";
     }
