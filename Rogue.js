@@ -13,16 +13,12 @@ class Dungeon {
         this.floors[0] = new Floor(mapWidth, mapHeight, 0);
     }
     gotoFloor(floorNumber) {
-        if (floorNumber < 0) return false;
-        if (this.floors[floorNumber]) {
-            // If level exist in the levels array, it is a level previously
-            this.floorNumber = floorNumber;
-        } else {
-            // New level needs to be created and stored.
-            this.floors[floorNumber] = new Floor(this.width, this.height, floorNumber);
+        if (floorNumber < 0) return;
+        if (!this.floors[floorNumber]) {
+            // New level that needs to be created and stored.
+            this.floors[floorNumber] = new Floor(mapWidth, mapHeight, floorNumber);
         }
         this.floorNumber = floorNumber;
-        return this.floors[floorNumber];
     }
     getCurrentFloor() {
         return this.floors[this.floorNumber];

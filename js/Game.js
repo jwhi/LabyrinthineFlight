@@ -1,10 +1,3 @@
-/**
- * Handles all the rendering of the game functions with PIXI.js
- * and player input.
- * Will try to keep generic enough so can be used with other games
- * and not break if Rogue.js is heavily modified.
- */
-
 // Currently the tiles used are 64x64 pixels. Originally 16x16 but PIXI.js
 // had issues with scaling sprites that small
 const tileSize = 64;
@@ -19,7 +12,7 @@ const defaultAlpha = 0;
 var socket = io();
 
 // Dungeon object received from the server.
-var rogue;
+var level;
 
 // Map sprites stores all the map sprites currently drawn on the screen
 // Map alpha stores the opacity for each individual tile that handles the FOV effect
@@ -81,8 +74,11 @@ let app = new Application({
 });
 
 
-socket.on('Dungeon', function(dungeon) {
-    rogue = dungeon;
+socket.on('dungeon', function(dungeonFloor) {
+    level = dungeonFloor;
+    updateMap();
+    // Set the game state to play
+    state = play;
 });
 socket.on('tileNames', function(tileNames) {
     for (let y = 0; y < mapHeight; y++) {
@@ -105,9 +101,6 @@ socket.on('mapAlphaValues', function(mapAlpha) {
     }
     renderer.render(app.stage);
 });
- socket.emit('request', 'new game');
-
-
 
 // Texture loading of font and map sprite sheets.
 PIXI.loader
@@ -115,15 +108,11 @@ PIXI.loader
     .load(setup);
 
 function setup() {
+    socket.emit('request', 'new game');
     // mapTiles is alias for all the texture atlas frame id textures
     // openDoorTexture is the texture swapped on the canvas when a player steps on a door tile
-    mapTiles = resources["level"].textures;
-    openDoorTexture =  PIXI.Texture.fromImage("assets/openDoor.png");
-
-    // Create instance of the roguelike that handles a majority of the game
-    //rogue = new Rogue(mapWidth, mapHeight);
-    updateMap();
-    //socket.emit('updatePlayerPosition', [getPlayerX(), getPlayerY()]);
+    mapTiles = resources['level'].textures;
+    openDoorTexture =  PIXI.Texture.fromImage('assets/openDoor.png');
 
     // If the site is being loaded from a mobile device, add touch screen arrow keys
     // and a button that appears when player is standing on stairs.
@@ -198,7 +187,7 @@ function setup() {
         app.stage.addChild(buttonDown);
 
         // Button that allows the player to use stairs to change floors of the dungeon
-        document.getElementById('addedControls').innerHTML = '<button class="button" onclick="if (rogue.useStairs()) updateMap();">Use Stairs</button>';
+        document.getElementById('addedControls').innerHTML = '<button class="button" onclick="useStairs();">Use Stairs</button>';
         document.getElementById('addedControls').style.visibility = "hidden";    
     } else {
         //Capture the keyboard arrow keys
@@ -256,20 +245,13 @@ function setup() {
         };
 
         period.press = () => {
-            if (rogue.useStairs(">")) {
-                updateMap();
-            }
+            useStairs(">");
         };
 
         comma.press = () => {
-            if (rogue.useStairs("<")) {
-                updateMap();
-            }
+            useStairs("<");
         };
     }
-
-    // Set the game state to play
-    state = play;
 
     // Start the game loop by adding the `gameLoop` function to
     // Pixi's `ticker` and providing it with a 'delta' argument
@@ -284,7 +266,10 @@ function setup() {
 }
 function gameLoop(delta) {
     // Update the current game state;
-    state(delta);
+    // State does not exist until the level loads. Prevents the player taking control
+    // before the game is ready.
+    if (state)
+        state(delta);
 }
 function play(delta) {
     // Wait for player to perform an action to end the player's turn
@@ -302,12 +287,12 @@ function play(delta) {
             // Player has moved. Update the server and move the player on the map.
             // FOV is still calculated server side so that will lag behind a little.
             socket.emit('move', [player_x, player_y]);
-            if (rogue.floors[rogue.floorNumber].map[player_x+','+player_y] === '+') {
-                rogue.floors[rogue.floorNumber].map[player_x+','+player_y] = '-';
+            if (level.map[player_x+','+player_y] === '+') {
+                level.map[player_x+','+player_y] = '-';
                 mapSprites[player_x+","+player_y].texture = openDoorTexture;
             }
         
-            if ((rogue.floors[rogue.floorNumber].map[player_x+","+player_y] === "<") || (rogue.floors[rogue.floorNumber].map[player_x+","+player_y] === ">")) {
+            if ((level.map[player_x+","+player_y] === "<") || (level.map[player_x+","+player_y] === ">")) {
                 document.getElementById('addedControls').style.visibility = "visible";
             } else {
                 document.getElementById('addedControls').style.visibility = "hidden";
@@ -327,7 +312,7 @@ function canWalk(x, y) {
         return false;
     }
 
-    switch (rogue.floors[rogue.floorNumber].map[x+","+y]) {
+    switch (level.map[x+","+y]) {
         case ' ':
         case '#':
             return false;
@@ -342,14 +327,14 @@ function updateMap() {
         gameTiles.destroy({children:true, texture:false, baseTexture:false});
     }
     
-   gameTiles = new PIXI.Container();
+    gameTiles = new PIXI.Container();
     
     if (player)
         app.stage.removeChild(player);
     
     player = new Sprite(mapTiles["player"]);
-    player.position.set(tileSize*rogue.floors[rogue.floorNumber].playerX,
-                        tileSize*rogue.floors[rogue.floorNumber].playerY);
+    player.position.set(tileSize * level.playerX,
+                        tileSize * level.playerY);
     player.vx = 0;
     player.vy = 0;
     
@@ -387,7 +372,6 @@ function getPlayerX() {
 // Returns the player's Y value in relation to the map instead of pixels from the top
 // This gives the player's Y position in terms the rogue class can understand
 function getPlayerY() {
-    
     if (player)
         return player.y / tileSize;
     else
@@ -486,4 +470,23 @@ function onButtonDown() {
 function onButtonUp() {
     this.alpha = 0;
     renderer.render(app.stage);
+}
+
+// keyPressed reflects whether '.' or ',' was pressed by user
+// '>' gets passed in for '.'; '<' gets passed in for ',';
+// Don't need to have distinction, but most desktop roguelikes have the two seperate
+// stairs buttons for up or down so I figured I should too for desktop controls.
+// If no key is passed in, function just uses whatever tile at player's position
+function useStairs(keyPressed) {
+    if (!keyPressed) {
+        keyPressed = level.map[getPlayerX()+','+getPlayerY()];
+    }
+    if (keyPressed ===  level.map[getPlayerX()+','+getPlayerY()]) {
+        if (keyPressed === '>') {
+            socket.emit('request', 'floor down');
+        } else if (keyPressed === '<') {
+            socket.emit('request', 'floor up');    
+        }
+    }
+    
 }

@@ -22,15 +22,24 @@ io.on('connection', function(socket) {
         switch(data) {
             case 'new game':
                 dungeon = new Rogue.Dungeon();
-                var map = dungeon.getCurrentFloor().getMap();
-                socket.emit('Dungeon', dungeon);
+                socket.emit('dungeon', dungeon.getCurrentFloor());
                 break;
-        case 'tileNames':
-            socket.emit('tileNames', dungeon.getCurrentFloor().generateTileNames());
-            break;
-        case 'mapAlphaValues':
-            socket.emit('mapAlphaValues', dungeon.mapAlphaValues());
-            break;
+            case 'tileNames':
+                socket.emit('tileNames', dungeon.getCurrentFloor().generateTileNames());
+                break;
+            case 'mapAlphaValues':
+                socket.emit('mapAlphaValues', dungeon.mapAlphaValues());
+                break;
+            case 'floor down':
+                dungeon.gotoFloor(dungeon.floorNumber + 1);
+                socket.emit('dungeon', dungeon.getCurrentFloor());
+                break;
+            case 'floor up':
+                dungeon.gotoFloor(dungeon.floorNumber - 1);
+                socket.emit('dungeon', dungeon.getCurrentFloor());
+                break;
+            default:
+                console.log('Bad request.\n' + data);
         }
     });
     socket.on('move', function(positions) {
