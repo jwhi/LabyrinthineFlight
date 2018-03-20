@@ -33,14 +33,32 @@ io.on('connection', function(socket) {
             console.log(str);
             socket.emit('Dungeon', dungeon);
         } else if (data === 'tileNames') {
-            //console.log(floor);
             socket.emit('tileNames', dungeon.getCurrentFloor().generateTileNames());
         } else if (data === 'mapAlphaValues') {
             socket.emit('mapAlphaValues', dungeon.mapAlphaValues());
         }
     });
-    socket.on('updatePlayerPosition', function(positions) {
-        dungeon.updatePlayerPosition(positions[0],positions[1]);
+    socket.on('move', function(positions) {
+        // Check if player can walk on the tile they are trying to walk towards
+        // If player can't walk on destination tile, player stays on their current tile.
+        // The player's turn still ends, but need to display text letting the player know they
+        // can't go that direction and it is now the enemies turn
+        var cf = dungeon.getCurrentFloor();
+        if (cf.canWalk(positions[0], positions[1])) {
+            // Player's vx and vy are +1 and -1 depending on direction the player wants to go
+            // To move player the proper amount of pixels on map, need to multiply the vx/vy by
+            // the size of the map sprites
+            cf.setPlayerPosition(positions[0], positions[1]);
+            
+            if (cf.getMap()[positions[0]+","+positions[1]] == "+") {
+                if (cf.openDoor(positions[0],positions[1])) {
+                    // If successfully opened door, replace closed door texture with an open door.
+                    socket.emit('open door', positions);
+                }
+            }
+            socket.emit('move', positions);
+            socket.emit('mapAlphaValues', dungeon.mapAlphaValues());
+        }
     });
 })
 

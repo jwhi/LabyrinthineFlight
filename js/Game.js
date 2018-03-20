@@ -66,6 +66,9 @@ var player;
 // patched in on the go and haven't had the chance to merge it into the spritesheet.
 var mapTiles, openDoorTexture;
 
+// Received from the server when a level is created. Won't have doors updated properly
+// Only used to see when the stairs button should be displayed for mobile
+var serverTileNames = null;
 // PIXI can store sprites in a container. This allows all game sprites to be deleted
 // and redrawn easily after a player changes floors
 var gameTiles = new PIXI.Container();
@@ -103,6 +106,7 @@ socket.on('floor', function(data) {
     console.log(str);
 });
 socket.on('tileNames', function(tileNames) {
+    serverTileNames = tileNames;
     for (let y = 0; y < mapHeight; y++) {
         for (let x = 0; x < mapWidth; x++) {
             mapSprites[x+","+y] = placeTile(tileNames[x+','+y], x * tileSize, y * tileSize);
@@ -118,14 +122,26 @@ socket.on('mapAlphaValues', function(mapAlpha) {
         for (var i = 0; i < mapWidth; i++) {
             var t = mapSprites[i+","+j];
             if (t) {
-                //t.alpha = mapAlpha[i+","+j];
-                t.alpha = 1;
+                t.alpha = mapAlpha[i+","+j];
+                //t.alpha = 1;
             }
         }
     }
     app.stage.addChild(gameTiles);
     gameTiles.addChild(player);
     renderer.render(app.stage);
+});
+socket.on('open door', function(positions) {
+    mapSprites[positions[0]+","+positions[1]].texture = openDoorTexture;
+});
+socket.on('move', function(positions) {
+    player.x = positions[0] * tileSize;
+    player.y = positions[1] * tileSize;
+    if ((serverTileNames[positions[0]+","+positions[1]] === "stairs_up") || (serverTileNames[positions[0]+","+positions[1]] === "stairs_down")) {
+        document.getElementById('addedControls').style.visibility = "visible";
+    } else {
+        document.getElementById('addedControls').style.visibility = "hidden";
+    }
 });
 
  socket.emit('request', 'new game');
@@ -146,7 +162,7 @@ function setup() {
     // Create instance of the roguelike that handles a majority of the game
     //rogue = new Rogue(mapWidth, mapHeight);
     updateMap();
-    socket.emit('updatePlayerPosition', [getPlayerX(), getPlayerY()]);
+    //socket.emit('updatePlayerPosition', [getPlayerX(), getPlayerY()]);
 
     // If the site is being loaded from a mobile device, add touch screen arrow keys
     // and a button that appears when player is standing on stairs.
@@ -307,64 +323,17 @@ function setup() {
 }
 function gameLoop(delta) {
     // Update the current game state;
-    //state(delta);
+    state(delta);
 }
 function play(delta) {
     // Wait for player to perform an action to end the player's turn
     // Right now the only action the player can make is move
     if (player.vx != 0 || player.vy != 0) {
         // Player has moved, move player on the map and update the player's FOV
-
-        // Check if player can walk on the tile they are trying to walk towards
-        // If player can't walk on destination tile, player stays on their current tile.
-        // The player's turn still ends, but need to display text letting the player know they
-        // can't go that direction and it is now the enemies turn
-        if (rogue.getCurrentFloor().canWalk(getPlayerX() + player.vx, getPlayerY() + player.vy)) {
-            // Player's vx and vy are +1 and -1 depending on direction the player wants to go
-            // To move player the proper amount of pixels on map, need to multiply the vx/vy by
-            // the size of the map sprites
-            player.x += tileSize * player.vx;
-            player.y += tileSize * player.vy;
-            rogue.updatePlayerPosition(getPlayerX(), getPlayerY());
-            
-            if (rogue.getCurrentFloor().getMap()[getPlayerX()+","+getPlayerY()] == "+") {
-                if (rogue.getCurrentFloor().openDoor(getPlayerX(),getPlayerY())) {
-                    // If successfully opened door, replace closed door texture with an open door.
-                    mapSprites[getPlayerX()+","+getPlayerY()].texture = openDoorTexture;
-                }
-            }
-            
-            mapAlpha = rogue.mapAlphaValues(getPlayerX(), getPlayerY());
-
-            for (var j = 0; j < mapHeight; j++) {
-                for (var i = 0; i < mapWidth; i++) {
-                    var t = mapSprites[i+","+j];
-                    if (t) {
-                        t.alpha = mapAlpha[i+","+j];
-                    }
-                }
-            }
-        }
-
-        for (var j = 0; j < mapHeight; j++) {
-            for (var i = 0; i < mapWidth; i++) {
-                var t = mapSprites[i+","+j];
-                if (t) {
-                    t.alpha = mapAlpha[i+","+j];
-                }
-            }
-        }
-        
-        if (rogue.getCurrentFloor().getMap()[getPlayerX()+","+getPlayerY()] == ">" || rogue.getCurrentFloor().getMap()[getPlayerX()+","+getPlayerY()] == "<") {
-            document.getElementById('addedControls').style.visibility = "visible";
-        } else {
-            document.getElementById('addedControls').style.visibility = "hidden";
-        }
+        console.log("move? please?");
+        socket.emit('move', [getPlayerX() + player.vx, getPlayerY() + player.vy]);
         player.vx = 0;
         player.vy = 0;
-
-        // Render the updated game screen
-        renderer.render(app.stage);
     }
 }
 // Handles drawing the dungeon level and deleting the old floor when the player changes floors

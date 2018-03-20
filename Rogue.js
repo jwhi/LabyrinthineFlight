@@ -58,7 +58,7 @@ class Dungeon {
         if (x && y) {
             return this.getCurrentFloor().updateFOV(x, y);
         } else {
-        return this.getCurrentFloor().updateFOV(this.getCurrentFloor().playerX, this.getCurrentFloor().playerY);
+            return this.getCurrentFloor().updateFOV(this.getCurrentFloor().playerX, this.getCurrentFloor().playerY);
         }
     }
 
@@ -153,7 +153,7 @@ class Floor {
         
         var fov = new ROT.FOV.PreciseShadowcasting(lightPasses);
         // Output callback for player's field-of-view
-        fov.compute(pX, pY, this.playerFOVRadius, function(x, y, r, visibility) {
+        fov.compute(pX, pY, playerFOVRadius, function(x, y, r, visibility) {
             var ch = (r ? "" : "@");
             localMapExplored[x+","+y] = 2;
         });
