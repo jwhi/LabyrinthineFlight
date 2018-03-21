@@ -7,21 +7,29 @@ const playerFOVRadius = 8;
 const previouslyExploredAlpha = 0.4;
 
 class Dungeon {
-    constructor(seed) {
-        this.floorNumber = 0;
+    constructor(seed, floorNumber, furthestFloor) {
+        if (floorNumber) {
+            this.floorNumber = floorNumber;
+        } else {
+            this.floorNumber = 0;
+        }
+        if (furthestFloor) {
+            this.furthestFloor = furthestFloor;
+        } else {
+            this.furthestFloor = floorNumber;
+        }
         this.floors = [];
         this.seed = seed;
-        ROT.RNG.setSeed(this.seed);
-        this.floors[0] = new Floor(mapWidth, mapHeight, 0);
+        ROT.RNG.setSeed(this.seed + this.floorNumber);
+        this.floors[this.floorNumber] = new Floor(mapWidth, mapHeight, this.floorNumber);
     }
-    gotoFloor(floorNumber) {
+    gotoFloor(floorNumber, upOrDown) {
         if (floorNumber < 0) return;
         if (!this.floors[floorNumber]) {
             // New level that needs to be created and stored.
             // RNG for ROT set to initial seed + floorNumber
             ROT.RNG.setSeed(this.seed + floorNumber);
-            console.log('Set seed to ' + this.seed);
-            this.floors[floorNumber] = new Floor(mapWidth, mapHeight, floorNumber);
+            this.floors[floorNumber] = new Floor(mapWidth, mapHeight, floorNumber, upOrDown === 'down');
         }
         this.floorNumber = floorNumber;
     }
@@ -63,6 +71,10 @@ class Dungeon {
         }
     }
 
+    setAlphaValues(alpha) {
+        this.getCurrentFloor().mapExplored = alpha;
+    }
+
     updatePlayerPosition(x,y) {
         this.getCurrentFloor().setPlayerPosition(x, y);
     }
@@ -73,7 +85,7 @@ class Dungeon {
 }
 
 class Floor {
-    constructor(width, height, levelNumber) {
+    constructor(width, height, levelNumber, spawnOnDownStairs) {
         this.map = {};
         this.width = width;
         this.height = height;
@@ -131,18 +143,21 @@ class Floor {
         }
 
         //var playerStartRoom = this.rooms[Math.floor(Math.random() * (this.rooms.length-1))];
-        var playerStartRoom = this.rooms[0];
-        this.playerX = playerStartRoom.getCenter()[0];
-        this.playerY = playerStartRoom.getCenter()[1];
         if (this.levelNumber != 0) {
-            this.map[this.playerX + "," + this.playerY] = "<";
+            this.map[this.rooms[0].getCenter()[0] + "," + this.rooms[0].getCenter()[1]] = "<";
         }
 
         //var stairsDownRoom = playerStartRoom;
         //while (stairsDownRoom == playerStartRoom) { stairsDownRoom = this.rooms[Math.floor(Math.random() * (this.rooms.length-1))]; }
-        var stairsDownRoom = this.rooms[this.rooms.length-1];
-        var stairsDown = stairsDownRoom.getCenter();
-        this.map[stairsDown[0] + "," +stairsDown[1]] = ">";
+        
+        this.map[this.rooms[this.rooms.length-1].getCenter()[0] + "," + this.rooms[this.rooms.length-1].getCenter()[1]] = ">";
+        
+        var roomID = 0;
+        if (spawnOnDownStairs) {
+            roomID = this.rooms.length - 1;
+        }
+        this.playerX = this.rooms[roomID].getCenter()[0];
+        this.playerY = this.rooms[roomID].getCenter()[1];
     }
     updateFOV(pX, pY) {
         var localMap = this.map;

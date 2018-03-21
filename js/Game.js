@@ -73,7 +73,9 @@ let app = new Application({
     resolution: 1
 });
 
-
+socket.on('debug', function(message) {
+    console.log(message);
+});
 socket.on('dungeon', function(dungeonFloor) {
     level = dungeonFloor;
     var str = "";
@@ -87,6 +89,9 @@ socket.on('dungeon', function(dungeonFloor) {
     updateMap();
     // Set the game state to play
     state = play;
+});
+socket.on('gameID', function(uuid) {
+        document.getElementById('saveID').innerHTML = '<h1>' + uuid + '</h1>';
 });
 socket.on('tileNames', function(tileNames) {
     for (let y = 0; y < mapHeight; y++) {
@@ -116,7 +121,7 @@ PIXI.loader
     .load(setup);
 
 function setup() {
-    socket.emit('request', 'new game');
+    socket.emit('load game', '3814c761-3558-4200-97a6-4d961a456663');
     // mapTiles is alias for all the texture atlas frame id textures
     // openDoorTexture is the texture swapped on the canvas when a player steps on a door tile
     mapTiles = resources['level'].textures;
@@ -195,8 +200,8 @@ function setup() {
         app.stage.addChild(buttonDown);
 
         // Button that allows the player to use stairs to change floors of the dungeon
-        document.getElementById('addedControls').innerHTML = '<button class="button" onclick="useStairs();">Use Stairs</button>';
-        document.getElementById('addedControls').style.visibility = "hidden";    
+        document.getElementById('addedControls').innerHTML = '<button class="button" id="stairsButton" onclick="useStairs();">Use Stairs</button>';
+        document.getElementById('stairsButton').style.visibility = "hidden";
     } else {
         //Capture the keyboard arrow keys
         let left = keyboard(37),
@@ -268,6 +273,8 @@ function setup() {
     // Add the canvas that Pixi automatically created to the HTML document
     document.getElementById('gameScreen').appendChild(renderer.view);
 
+    // Add save button
+    document.getElementById('addedControls').innerHTML += '<button class="button" onclick="save();">Save</button>';    
     // Resize the game window to the browser window so player does not need to scroll
     // to see the entire game board or find where the player is on the screen.
     resize();
@@ -300,10 +307,12 @@ function play(delta) {
                 mapSprites[player_x+","+player_y].texture = openDoorTexture;
             }
         
-            if ((level.map[player_x+","+player_y] === "<") || (level.map[player_x+","+player_y] === ">")) {
-                document.getElementById('addedControls').style.visibility = "visible";
-            } else {
-                document.getElementById('addedControls').style.visibility = "hidden";
+            if (isMobile) {
+                if ((level.map[player_x+","+player_y] === "<") || (level.map[player_x+","+player_y] === ">")) {
+                    document.getElementById('stairsButton').style.visibility = "visible";
+                } else {
+                    document.getElementById('stairsButton').style.visibility = "hidden";
+                }
             }
 
             // Renderer is updated when the game receives updated FOV from player
@@ -499,4 +508,7 @@ function useStairs(keyPressed) {
         }
     }
     
+}
+function save() {
+    socket.emit('request', 'save');
 }

@@ -2,10 +2,16 @@
     "name": "labyrinthine-flight",
     "version": "0.0.1",
     "description": "Rogue-like game",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/jwhi/LabyrinthineFlight"
+    },
+    "license": "GPL 3.0",
     "dependencies": {
         "express": "^4.16.3",
         "rot-js": "^0.6.5",
         "socket.io": "^2.0.4",
-        "sqlite3": "^4.0.0"
+        "sqlite3": "^4.0.0",
+        "uuid": "^3.2.1"
     }
 }
