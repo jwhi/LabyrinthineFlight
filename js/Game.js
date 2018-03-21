@@ -8,6 +8,7 @@ const fontSize =  24;
 // Used when first drawing tiles to the screen. Mostly for testing
 const defaultAlpha = 0;
 
+const defaultName = 'Prisoner';
 // Socket for interactions with the server
 var socket = io();
 
@@ -121,7 +122,21 @@ PIXI.loader
     .load(setup);
 
 function setup() {
-    socket.emit('load game', '3814c761-3558-4200-97a6-4d961a456663');
+    if (confirm("Press 'OK' to start a NEW GAME\nPress 'Cancel' to LOAD GAME from a UUID.")) {
+        var newPlayer = prompt("Please enter your name", defaultName);
+        if (newPlayer == null || newPlayer == "") {
+            socket.emit('new game', defaultName);
+        } else {
+            socket.emit('new game', newPlayer);
+        }
+    } else {
+        var loadUUID = prompt("Please enter UUID to load", "");
+        if (loadUUID == null || loadUUID == "") {
+            socket.emit('new game', defaultName);
+        } else {
+            socket.emit('load game', loadUUID);
+        }
+    }
     // mapTiles is alias for all the texture atlas frame id textures
     // openDoorTexture is the texture swapped on the canvas when a player steps on a door tile
     mapTiles = resources['level'].textures;

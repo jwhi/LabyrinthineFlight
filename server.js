@@ -28,12 +28,13 @@ io.on('connection', function(socket) {
     socket.on('disconnect', function() {
         console.log('user disconnected.');
         // Save the player's info
-        db.run(`UPDATE saves SET x = $x, y = $y, currentFloor = $currentFloor, maxFloor = $maxFloor, alpha = $alpha WHERE uuid = $uuid;`, {
+        db.run(`UPDATE saves SET x = $x, y = $y, currentFloor = $currentFloor, maxFloor = $maxFloor, map = $map, alpha = $alpha WHERE uuid = $uuid;`, {
             $uuid: uuid,
             $x: dungeon.getCurrentFloor().playerX,
             $y: dungeon.getCurrentFloor().playerY,
             $currentFloor: dungeon.floorNumber,
             $maxFloor: dungeon.floors.length - 1,
+            $map: JSON.stringify(dungeon.getCurrentFloor().map),
             $alpha: JSON.stringify(dungeon.mapAlphaValues())
         });
     });
@@ -47,8 +48,8 @@ io.on('connection', function(socket) {
         seed = Math.floor(Math.random() * Math.floor(Number.MAX_SAFE_INTEGER - 1000000));
         dungeon = new Rogue.Dungeon(seed);
         socket.emit('dungeon', dungeon.getCurrentFloor());
-        //  create table saves(uuid text primary key, name text, x integer, y integer, seed integer, currentFloor integer, maxFloor integer, alpha text);
-        db.run(`INSERT INTO saves VALUES ($uuid, $name, $x, $y, $seed, $currentFloor, $maxFloor, $alpha)`, {
+        //  create table saves(uuid text primary key, name text, x integer, y integer, seed integer, currentFloor integer, maxFloor integer, map text, alpha text);
+        db.run(`INSERT INTO saves VALUES ($uuid, $name, $x, $y, $seed, $currentFloor, $maxFloor, $map, $alpha)`, {
                     $uuid: uuid,
                     $name: name,
                     $x: dungeon.getCurrentFloor().playerX,
@@ -56,6 +57,7 @@ io.on('connection', function(socket) {
                     $seed: seed,
                     $currentFloor: dungeon.floorNumber,
                     $maxFloor: dungeon.floors.length - 1,
+                    $map: JSON.stringify(dungeon.getCurrentFloor().map),
                     $alpha: JSON.stringify(dungeon.mapAlphaValues())
         });
         socket.emit('gameID', uuid);
@@ -70,6 +72,7 @@ io.on('connection', function(socket) {
             playerName = row.name;
             seed = row.seed;
             dungeon = new Rogue.Dungeon(seed, row.currentFloor, row.maxFloor);
+            dungeon.getCurrentFloor().map = JSON.parse(row.map);
             dungeon.setAlphaValues(JSON.parse(row.alpha));
             dungeon.getCurrentFloor().playerX = row.x;
             dungeon.getCurrentFloor().playerY = row.y;
@@ -88,21 +91,22 @@ io.on('connection', function(socket) {
                 socket.emit('mapAlphaValues', dungeon.mapAlphaValues());
                 break;
             case 'floor down':
-                dungeon.gotoFloor(dungeon.floorNumber + 1);
+                dungeon.gotoFloor(dungeon.floorNumber + 1, "up");
                 socket.emit('dungeon', dungeon.getCurrentFloor());
                 break;
             case 'floor up':
-                dungeon.gotoFloor(dungeon.floorNumber - 1);
+                dungeon.gotoFloor(dungeon.floorNumber - 1, "down");
                 socket.emit('dungeon', dungeon.getCurrentFloor());
                 break;
             case 'save':
                 // Save the player's info
-                db.run(`UPDATE saves SET x = $x, y = $y, currentFloor = $currentFloor, maxFloor = $maxFloor, alpha = $alpha WHERE uuid = $uuid;`, {
+                db.run(`UPDATE saves SET x = $x, y = $y, currentFloor = $currentFloor, maxFloor = $maxFloor, map = $map, alpha = $alpha WHERE uuid = $uuid;`, {
                     $uuid: uuid,
                     $x: dungeon.getCurrentFloor().playerX,
                     $y: dungeon.getCurrentFloor().playerY,
                     $currentFloor: dungeon.floorNumber,
                     $maxFloor: dungeon.floors.length - 1,
+                    $map: JSON.stringify(dungeon.getCurrentFloor().map),
                     $alpha: JSON.stringify(dungeon.mapAlphaValues())
                 });
                 socket.emit('debug','save succesful');
