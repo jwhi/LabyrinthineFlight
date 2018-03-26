@@ -180,7 +180,7 @@ class Floor {
             for (var i = 0; i < this.width; i++) {
                 var tileAlpha = this.mapExplored[i+","+j];
                 if (tileAlpha == 1) {
-                    tileAlpha = this.previouslyExploredAlpha;
+                    tileAlpha = previouslyExploredAlpha;
                 } else if (tileAlpha == 2) {
                     tileAlpha = 1;
                 }
