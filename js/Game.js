@@ -15,6 +15,8 @@ var socket = io();
 // Dungeon object received from the server.
 var level;
 
+var tileSets = false;
+
 // Map sprites stores all the map sprites currently drawn on the screen
 // Map alpha stores the opacity for each individual tile that handles the FOV effect
 var mapSprites = [], mapAlpha = [];
@@ -119,6 +121,7 @@ socket.on('mapAlphaValues', function(mapAlpha) {
 // Texture loading of font and map sprite sheets.
 PIXI.loader
     .add('level', "assets/level_creatures.json")
+    .add('level_new', "assets/level_creatures_new.json")
     .load(setup);
 
 function setup() {
@@ -137,10 +140,14 @@ function setup() {
             socket.emit('load game', loadUUID);
         }
     }
+    
+    tileSets = confirm('Press OK to use the classic tiles.\nPress Cancel to use new tiles.');
     // mapTiles is alias for all the texture atlas frame id textures
     // openDoorTexture is the texture swapped on the canvas when a player steps on a door tile
-    mapTiles = resources['level'].textures;
-    openDoorTexture =  PIXI.Texture.fromImage('assets/openDoor.png');
+    var levelTilesPack = 'level' + (tileSets ? "" : "_new");
+    var doorTilePack = 'assets/openDoor' + (tileSets ? "" : "_new") + '.png';
+    mapTiles = resources[levelTilesPack].textures;
+    openDoorTexture =  PIXI.Texture.fromImage(doorTilePack);
 
     // If the site is being loaded from a mobile device, add touch screen arrow keys
     // and a button that appears when player is standing on stairs.

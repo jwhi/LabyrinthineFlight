@@ -6,6 +6,8 @@ const uuidv4 = require('uuid/v4');
 const sqlite3 = require('sqlite3');
 const Rogue = require('./Rogue.js');
 
+const PORT = 3000;
+
 app.use('/js',express.static(__dirname + '/js'));
 app.use('/assets',express.static(__dirname + '/assets'));
 app.get('/', function(req, res) {
@@ -119,10 +121,10 @@ io.on('connection', function(socket) {
         dungeon.getCurrentFloor().setPlayerPosition(positions[0], positions[1]);
         socket.emit('mapAlphaValues', dungeon.mapAlphaValues());
     });
-})
+});
 
-http.listen(3000, function() {
-    console.log('Listening on port 3000.');
+http.listen(PORT, function() {
+    console.log('Listening on port ' + PORT + '.');
 });
 
 process.on('SIGINT', function() {
