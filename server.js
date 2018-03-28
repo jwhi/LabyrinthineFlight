@@ -30,15 +30,17 @@ io.on('connection', function(socket) {
     socket.on('disconnect', function() {
         console.log('user disconnected.');
         // Save the player's info
-        db.run(`UPDATE saves SET x = $x, y = $y, currentFloor = $currentFloor, maxFloor = $maxFloor, map = $map, alpha = $alpha WHERE uuid = $uuid;`, {
-            $uuid: uuid,
-            $x: dungeon.getCurrentFloor().playerX,
-            $y: dungeon.getCurrentFloor().playerY,
-            $currentFloor: dungeon.floorNumber,
-            $maxFloor: dungeon.floors.length - 1,
-            $map: JSON.stringify(dungeon.getCurrentFloor().map),
-            $alpha: JSON.stringify(dungeon.mapAlphaValues())
-        });
+        if (dungeon && uuid) {
+            db.run(`UPDATE saves SET x = $x, y = $y, currentFloor = $currentFloor, maxFloor = $maxFloor, map = $map, alpha = $alpha WHERE uuid = $uuid;`, {
+                $uuid: uuid,
+                $x: dungeon.getCurrentFloor().playerX,
+                $y: dungeon.getCurrentFloor().playerY,
+                $currentFloor: dungeon.floorNumber,
+                $maxFloor: dungeon.floors.length - 1,
+                $map: JSON.stringify(dungeon.getCurrentFloor().map),
+                $alpha: JSON.stringify(dungeon.mapAlphaValues())
+            });
+        }
     });
     socket.on('new game', function(name) {
         uuid = uuidv4();
@@ -102,15 +104,17 @@ io.on('connection', function(socket) {
                 break;
             case 'save':
                 // Save the player's info
-                db.run(`UPDATE saves SET x = $x, y = $y, currentFloor = $currentFloor, maxFloor = $maxFloor, map = $map, alpha = $alpha WHERE uuid = $uuid;`, {
-                    $uuid: uuid,
-                    $x: dungeon.getCurrentFloor().playerX,
-                    $y: dungeon.getCurrentFloor().playerY,
-                    $currentFloor: dungeon.floorNumber,
-                    $maxFloor: dungeon.floors.length - 1,
-                    $map: JSON.stringify(dungeon.getCurrentFloor().map),
-                    $alpha: JSON.stringify(dungeon.mapAlphaValues())
-                });
+                if (dungeon && uuid) {
+                    db.run(`UPDATE saves SET x = $x, y = $y, currentFloor = $currentFloor, maxFloor = $maxFloor, map = $map, alpha = $alpha WHERE uuid = $uuid;`, {
+                        $uuid: uuid,
+                        $x: dungeon.getCurrentFloor().playerX,
+                        $y: dungeon.getCurrentFloor().playerY,
+                        $currentFloor: dungeon.floorNumber,
+                        $maxFloor: dungeon.floors.length - 1,
+                        $map: JSON.stringify(dungeon.getCurrentFloor().map),
+                        $alpha: JSON.stringify(dungeon.mapAlphaValues())
+                    });
+                }
                 socket.emit('debug','save succesful');
                 break;
             default:
@@ -118,8 +122,12 @@ io.on('connection', function(socket) {
         }
     });
     socket.on('move', function(positions) {
-        dungeon.getCurrentFloor().setPlayerPosition(positions[0], positions[1]);
-        socket.emit('mapAlphaValues', dungeon.mapAlphaValues());
+        if (dungeon) {
+            dungeon.getCurrentFloor().setPlayerPosition(positions[0], positions[1]);
+            socket.emit('mapAlphaValues', dungeon.mapAlphaValues());
+        } else {
+            socket.emit('missing', 'no dungeon');
+        }
     });
 });
 

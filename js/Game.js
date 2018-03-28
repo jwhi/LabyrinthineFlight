@@ -17,6 +17,8 @@ var level;
 
 var tileSets = false;
 
+var uuid;
+
 // Map sprites stores all the map sprites currently drawn on the screen
 // Map alpha stores the opacity for each individual tile that handles the FOV effect
 var mapSprites = [], mapAlpha = [];
@@ -93,7 +95,8 @@ socket.on('dungeon', function(dungeonFloor) {
     // Set the game state to play
     state = play;
 });
-socket.on('gameID', function(uuid) {
+socket.on('gameID', function(gameID) {
+        uuid = gameID;
         document.getElementById('saveID').innerHTML = '<h1>' + uuid + '</h1>';
 });
 socket.on('tileNames', function(tileNames) {
@@ -117,6 +120,19 @@ socket.on('mapAlphaValues', function(mapAlpha) {
     }
     renderer.render(app.stage);
 });
+socket.on('missing', function(err) {
+    if (err === 'no dungeon') {
+        if (uuid) {
+            socket.emit('load game', uuid);
+        } else {
+            if (name) {
+                socket.emit('new game', name);
+            } else {
+                socket.emit('new game', defaultName);
+            }
+        }
+    }
+});
 
 // Texture loading of font and map sprite sheets.
 PIXI.loader
@@ -125,6 +141,8 @@ PIXI.loader
     .load(setup);
 
 function setup() {
+    tileSets = confirm('Press OK to use the classic tiles.\nPress Cancel to use new tiles.');
+
     if (confirm("Press 'OK' to start a NEW GAME\nPress 'Cancel' to LOAD GAME from a UUID.")) {
         var newPlayer = prompt("Please enter your name", defaultName);
         if (newPlayer == null || newPlayer == "") {
@@ -140,8 +158,6 @@ function setup() {
             socket.emit('load game', loadUUID);
         }
     }
-    
-    tileSets = confirm('Press OK to use the classic tiles.\nPress Cancel to use new tiles.');
     // mapTiles is alias for all the texture atlas frame id textures
     // openDoorTexture is the texture swapped on the canvas when a player steps on a door tile
     var levelTilesPack = 'level' + (tileSets ? "" : "_new");

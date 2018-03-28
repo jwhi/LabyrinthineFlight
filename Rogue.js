@@ -1,5 +1,31 @@
-var ROT = require("rot-js");
+"use strict";
+const ROT = require("rot-js");
+/*
+const XMLHttpRequest = require("xmlhttprequest").XMLHttpRequest;
 
+
+var sg = new ROT.StringGenerator();
+var xhr = new XMLHttpRequest();
+
+xhr.open("get", "nicknames.txt", true);
+console.log(xhr);
+xhr.send();
+
+xhr.onreadystatechange = function() {
+    if (xhr.readyState != 4) { return; }
+
+    var lines = xhr.responseText.split("\n");
+    while(lines.length) {
+        var line = lines.pop().trim();
+        if (!line) { continue; }
+        sg.observe(line);
+    }
+}
+
+for (var i = 0; i < 20; i++) {
+    console.log("Name: " + sg.generate());
+}
+*/
 const mapWidth = 30;
 const mapHeight = 30;
 
