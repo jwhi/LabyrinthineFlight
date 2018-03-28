@@ -118,6 +118,7 @@ socket.on('mapAlphaValues', function(mapAlpha) {
             }
         }
     }
+    document.getElementById('gameInfo').innerHTML = '<h1 style="float: left">Player Name: ' + level.playerName + '</h1><h1 style="float: right">Dungeon Level: ' + (level.levelNumber + 1) + '</h1>';
     renderer.render(app.stage);
 });
 socket.on('missing', function(err) {
@@ -396,7 +397,7 @@ function updateMap() {
     socket.emit('request', 'tileNames');
 
     socket.emit('request', 'mapAlphaValues');
-
+    
     return true;
 }
 // Helper function to place tiles into the application using sprites from the spritesheet

@@ -50,7 +50,7 @@ io.on('connection', function(socket) {
         // has plenty of floors before they hit max int. Just needs to be a check
         // but this is quick and planning on just being the implementation during testing.
         seed = Math.floor(Math.random() * Math.floor(Number.MAX_SAFE_INTEGER - 1000000));
-        dungeon = new Rogue.Dungeon(seed);
+        dungeon = new Rogue.Dungeon(playerName, seed);
         socket.emit('dungeon', dungeon.getCurrentFloor());
         //  create table saves(uuid text primary key, name text, x integer, y integer, seed integer, currentFloor integer, maxFloor integer, map text, alpha text);
         db.run(`INSERT INTO saves VALUES ($uuid, $name, $x, $y, $seed, $currentFloor, $maxFloor, $map, $alpha)`, {
@@ -75,7 +75,7 @@ io.on('connection', function(socket) {
             uuid = loadID;
             playerName = row.name;
             seed = row.seed;
-            dungeon = new Rogue.Dungeon(seed, row.currentFloor, row.maxFloor);
+            dungeon = new Rogue.Dungeon(playerName, seed, row.currentFloor, row.maxFloor);
             dungeon.getCurrentFloor().map = JSON.parse(row.map);
             dungeon.setAlphaValues(JSON.parse(row.alpha));
             dungeon.getCurrentFloor().playerX = row.x;
@@ -102,6 +102,12 @@ io.on('connection', function(socket) {
                 dungeon.gotoFloor(dungeon.floorNumber - 1, "down");
                 socket.emit('dungeon', dungeon.getCurrentFloor());
                 break;
+            case 'name':
+                if (name) {
+                    socket.emit('name', playerName);
+                } else {
+                    socket.emit('missing', 'name');
+                }
             case 'save':
                 // Save the player's info
                 if (dungeon && uuid) {
