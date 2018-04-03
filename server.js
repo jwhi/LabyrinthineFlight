@@ -69,21 +69,24 @@ io.on('connection', function(socket) {
     socket.on('load game', function(loadID) {
         db.get(`SELECT * FROM saves WHERE uuid = $uuid;`, { $uuid: loadID },
         function(err, row) {
-            if (err) {
-                console.error(err.message);
+            if (err || !row) {
+                if (err) console.error(err.message);
+                socket.emit('missing','load');
+            } else {
+                console.log(row);
+                uuid = loadID;
+                playerName = row.name;
+                seed = row.seed;
+                dungeon = new Rogue.Dungeon(playerName, seed, row.currentFloor, row.maxFloor);
+                dungeon.getCurrentFloor().map = JSON.parse(row.map);
+                dungeon.setAlphaValues(JSON.parse(row.alpha));
+                dungeon.getCurrentFloor().playerX = row.x;
+                dungeon.getCurrentFloor().playerY = row.y;
+                socket.emit('debug', 'player name = ' + playerName);
+                socket.emit('debug', 'current floor = ' + dungeon.floorNumber);
+                socket.emit('dungeon', dungeon.getCurrentFloor());
+                socket.emit('gameID', uuid);
             }
-            uuid = loadID;
-            playerName = row.name;
-            seed = row.seed;
-            dungeon = new Rogue.Dungeon(playerName, seed, row.currentFloor, row.maxFloor);
-            dungeon.getCurrentFloor().map = JSON.parse(row.map);
-            dungeon.setAlphaValues(JSON.parse(row.alpha));
-            dungeon.getCurrentFloor().playerX = row.x;
-            dungeon.getCurrentFloor().playerY = row.y;
-            socket.emit('debug', 'player name = ' + playerName);
-            socket.emit('debug', 'current floor = ' + dungeon.floorNumber);
-            socket.emit('dungeon', dungeon.getCurrentFloor());
-            socket.emit('gameID', uuid);
         });
     });
     socket.on('request', function(data) {

@@ -4,11 +4,14 @@ const tileSize = 64;
 
 // Width in pixels of the textures used for fonts
 const fontSize =  24;
+const fontHeight = 32;
+const lineSpacing = 8;
 
 // Used when first drawing tiles to the screen. Mostly for testing
 const defaultAlpha = 0;
 
 const defaultName = 'Prisoner';
+
 // Socket for interactions with the server
 var socket = io();
 
@@ -132,6 +135,11 @@ socket.on('missing', function(err) {
                 socket.emit('new game', defaultName);
             }
         }
+    } else if (err === 'load') {
+        // Display error screen. Unable to load the game.
+        screenWithText('Error: No save found with that UUID.');
+        document.getElementById('addedControls').innerHTML = '';
+        state = error;
     }
 });
 
@@ -139,6 +147,7 @@ socket.on('missing', function(err) {
 PIXI.loader
     .add('level', "assets/level_creatures.json")
     .add('level_new', "assets/level_creatures_new.json")
+    .add(["assets/orange_font.json", "assets/white_font.json", "assets/grey_font.json", "assets/blue_font.json"])
     .load(setup);
 
 function setup() {
@@ -379,15 +388,7 @@ function canWalk(x, y) {
 
 // Handles drawing the dungeon level and deleting the old floor when the player changes floors
 function updateMap() {
-    if (gameTiles) {
-        gameTiles.destroy({children:true, texture:false, baseTexture:false});
-    }
-    
-    gameTiles = new PIXI.Container();
-    
-    if (player)
-        app.stage.removeChild(player);
-    
+    clearApp();
     player = new Sprite(mapTiles["player"]);
     player.position.set(tileSize * level.playerX,
                         tileSize * level.playerY);
@@ -414,6 +415,49 @@ function placeTile(tileName, x, y) {
         gameTiles.addChild(tile);
     }
     return tile;
+}
+
+// Draws text using the orange font that is with loveable rogue-like tiles.
+// str is the string you want to draw and x and y are the starting positions for the text.
+function drawText(str, start_x, start_y, color) {
+    if (color == null) {
+        if (tileSets) {
+            color = "orange";
+        } else {
+            color = "blue";
+        }
+    }
+    lines = str.split('\n');
+    if (lines.length > 1) {
+        lines.forEach(function(line, i) {
+            // TODO: figure out why lineSpacing is shifting everything down or not being used at all
+            // Replace the lineSpacing with a large int value (e.g. 800) to see shift effect
+            drawText(line, start_x, (start_y + lineSpacing) + (i * fontHeight), color);
+        });
+    } else {
+        font = PIXI.loader.resources["assets/" + color + "_font.json"].textures;
+        let x = start_x, y = start_y;
+        for (let i = 0, len = str.length; i < len; i++) {
+            let character, charAt = str.charAt(i);
+            if (charAt == "!") {
+                character = "_exclamation";
+            } else if (charAt == ":") {
+                character = "_colon"; 
+            } else if (charAt == ".") {
+                character = "_period";
+            } else if (charAt == charAt.toLowerCase()) {
+                character = charAt + "_l";
+            } else if (charAt == charAt.toUpperCase()) {
+                character = charAt.toLowerCase() + "_u";
+            }
+
+            let sprite = new Sprite(font[character + ".png"]);
+            sprite.position.set(x, y);
+            gameTiles.addChild(sprite);
+            x += fontSize;
+        }
+    }
+    
 }
 
 // Returns the player's X value in relation to the map instead of pixels from the right
@@ -541,13 +585,40 @@ function useStairs(keyPressed) {
     }
     if (keyPressed ===  level.map[getPlayerX()+','+getPlayerY()]) {
         if (keyPressed === '>') {
+            state = error;
+            screenWithText("Loading...");
             socket.emit('request', 'floor down');
         } else if (keyPressed === '<') {
+            state = error;
+            screenWithText("Loading...");
             socket.emit('request', 'floor up');    
         }
     }
-    
 }
+
 function save() {
     socket.emit('request', 'save');
+}
+
+function screenWithText(text) {
+    clearApp();
+    drawText(text, (appWidth - (text.length * fontSize))/2, (appHeight - fontHeight)/2);
+    app.stage.addChild(gameTiles);
+    renderer.render(app.stage);
+        
+}
+
+function error(delta) {
+}
+
+function clearApp() {
+    if (gameTiles) {
+        gameTiles.destroy({children:true, texture:false, baseTexture:false});
+    }
+    
+    gameTiles = new PIXI.Container();
+    
+    if (player)
+        app.stage.removeChild(player);
+    
 }
