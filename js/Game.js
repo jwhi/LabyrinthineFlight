@@ -151,30 +151,6 @@ PIXI.loader
     .load(setup);
 
 function setup() {
-    tileSets = confirm('Press OK to use the classic tiles.\nPress Cancel to use new tiles.');
-
-    if (confirm("Press 'OK' to start a NEW GAME\nPress 'Cancel' to LOAD GAME from a UUID.")) {
-        var newPlayer = prompt("Please enter your name", defaultName);
-        if (newPlayer == null || newPlayer == "") {
-            socket.emit('new game', defaultName);
-        } else {
-            socket.emit('new game', newPlayer);
-        }
-    } else {
-        var loadUUID = prompt("Please enter UUID to load", "");
-        if (loadUUID == null || loadUUID == "") {
-            socket.emit('new game', defaultName);
-        } else {
-            socket.emit('load game', loadUUID);
-        }
-    }
-    // mapTiles is alias for all the texture atlas frame id textures
-    // openDoorTexture is the texture swapped on the canvas when a player steps on a door tile
-    var levelTilesPack = 'level' + (tileSets ? "" : "_new");
-    var doorTilePack = 'assets/openDoor' + (tileSets ? "" : "_new") + '.png';
-    mapTiles = resources[levelTilesPack].textures;
-    openDoorTexture =  PIXI.Texture.fromImage(doorTilePack);
-
     // If the site is being loaded from a mobile device, add touch screen arrow keys
     // and a button that appears when player is standing on stairs.
     // Buttons appear transparent so they do not obstruct the view of the game.
@@ -317,15 +293,43 @@ function setup() {
     // Start the game loop by adding the `gameLoop` function to
     // Pixi's `ticker` and providing it with a 'delta' argument
     app.ticker.add(delta=>gameLoop(delta));
-    
+
     // Add the canvas that Pixi automatically created to the HTML document
     document.getElementById('gameScreen').appendChild(renderer.view);
+
+    //screenWithText('Welcome to Labyrinthine Flight!', 'white');
+    resize();
+
+    tileSets = confirm('Press OK to use the classic tiles.\nPress Cancel to use new tiles.');
+
+    // mapTiles is alias for all the texture atlas frame id textures
+    // openDoorTexture is the texture swapped on the canvas when a player steps on a door tile
+    var levelTilesPack = 'level' + (tileSets ? "" : "_new");
+    var doorTilePack = 'assets/openDoor' + (tileSets ? "" : "_new") + '.png';
+    mapTiles = resources[levelTilesPack].textures;
+    openDoorTexture =  PIXI.Texture.fromImage(doorTilePack);
+
+
+    if (confirm("Press 'OK' to start a NEW GAME\nPress 'Cancel' to LOAD GAME from a UUID.")) {
+        var newPlayer = prompt("Please enter your name", defaultName);
+        if (newPlayer == null || newPlayer == "") {
+            socket.emit('new game', defaultName);
+        } else {
+            socket.emit('new game', newPlayer);
+        }
+    } else {
+        var loadUUID = prompt("Please enter UUID to load", "");
+        if (loadUUID == null || loadUUID == "") {
+            socket.emit('new game', defaultName);
+        } else {
+            socket.emit('load game', loadUUID);
+        }
+    }
 
     // Add save button
     document.getElementById('addedControls').innerHTML += '<button class="button" onclick="save();">Save</button>';    
     // Resize the game window to the browser window so player does not need to scroll
     // to see the entire game board or find where the player is on the screen.
-    resize();
 }
 function gameLoop(delta) {
     // Update the current game state;
@@ -600,12 +604,11 @@ function save() {
     socket.emit('request', 'save');
 }
 
-function screenWithText(text) {
+function screenWithText(text, color) {
     clearApp();
-    drawText(text, (appWidth - (text.length * fontSize))/2, (appHeight - fontHeight)/2);
+    drawText(text, appWidth/2 - (text.length/2) * fontSize, (appHeight - fontHeight)/2, color);
     app.stage.addChild(gameTiles);
     renderer.render(app.stage);
-        
 }
 
 function error(delta) {

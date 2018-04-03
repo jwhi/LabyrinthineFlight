@@ -73,7 +73,6 @@ io.on('connection', function(socket) {
                 if (err) console.error(err.message);
                 socket.emit('missing','load');
             } else {
-                console.log(row);
                 uuid = loadID;
                 playerName = row.name;
                 seed = row.seed;
