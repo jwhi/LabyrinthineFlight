@@ -263,6 +263,21 @@ class Floor {
                 return true;
         }
     }
+    placeEnemies() {
+        var enemyStartRoom, enemyX, enemyY, attempts = 0;
+        // TODO: Improve enemy placement
+        // Attempts is to prevent infinite loops that might happen during test. Will place enemies different in final implementation
+        do {
+        enemyStartRoom = this.rooms[Math.floor(Math.random() * (this.rooms.length-1))];
+        enemyX = enemyStartRoom.getCenter()[0];
+        enemyY = enemyStartRoom.getCenter()[1];
+        attempts++;
+        } while (this.inRoom(enemyX, enemyY) == this.inRoom(this.playerX, this.playerY) && attempts < 3);
+        this.enemies[enemyX+","+enemyY] = new Enemy('goblin');
+    }
+    getEnemies() {
+        return this.enemies;
+    }
     generateTileNames() {
         // Instead of placing individual tiles, store all tile sprites together in an array
         // in the layout of map[x+","+y] with the key being tile coordinates. This will allow
@@ -336,6 +351,28 @@ class Floor {
             }
         }
         return tileNames;
+    }
+}
+
+class Enemy {
+    constructor(name) {
+        this.name = name;
+        this.health = 0;
+        this.attack = 0;
+        this.accuracy = 0;
+        this.char = "";
+        this.loot = [];
+        this.description = "";
+        
+        switch (name) {
+            case 'goblin':
+                this.health = 3;
+                this.attack = 1;
+                this.accuracy = 0.8;
+                this.char = "g";
+                this.description = "It a goblin.";
+                break;
+        }
     }
 }
 

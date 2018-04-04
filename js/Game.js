@@ -7,6 +7,8 @@ const fontSize =  24;
 const fontHeight = 32;
 const lineSpacing = 8;
 
+const maxSaves = 5;
+
 // Used when first drawing tiles to the screen. Mostly for testing
 const defaultAlpha = 0;
 
@@ -20,6 +22,7 @@ var level;
 
 var tileSets = false;
 
+var playerName = '';
 var uuid;
 
 // Map sprites stores all the map sprites currently drawn on the screen
@@ -81,12 +84,15 @@ let app = new Application({
     resolution: 1
 });
 
+
+// Sockets handled by Socket.io
+// When the page receives these packets, update the webpage as needed
 socket.on('debug', function(message) {
     console.log(message);
 });
 socket.on('dungeon', function(dungeonFloor) {
     level = dungeonFloor;
-    var str = "";
+    var str = '';
     for (var y = 0; y < mapHeight; y++) {
         for (var x = 0; x < mapWidth; x++) {
             str += level.map[x+','+y];
@@ -98,14 +104,16 @@ socket.on('dungeon', function(dungeonFloor) {
     // Set the game state to play
     state = play;
 });
-socket.on('gameID', function(gameID) {
-        uuid = gameID;
+socket.on('playerInfo', function(playerInfo) {
+        playerName = playerInfo.name;
+        uuid = playerInfo.saveID;
         document.getElementById('saveID').innerHTML = '<h1>' + uuid + '</h1>';
+        setLocalStorageSaves(playerName, uuid);
 });
 socket.on('tileNames', function(tileNames) {
     for (let y = 0; y < mapHeight; y++) {
         for (let x = 0; x < mapWidth; x++) {
-            mapSprites[x+","+y] = placeTile(tileNames[x+','+y], x * tileSize, y * tileSize);
+            mapSprites[x+','+y] = placeTile(tileNames[x+','+y], x * tileSize, y * tileSize);
         }
     }
     app.stage.addChild(gameTiles);
@@ -114,14 +122,14 @@ socket.on('tileNames', function(tileNames) {
 socket.on('mapAlphaValues', function(mapAlpha) {
     for (var j = 0; j < mapHeight; j++) {
         for (var i = 0; i < mapWidth; i++) {
-            var t = mapSprites[i+","+j];
+            var t = mapSprites[i+','+j];
             if (t) {
-                t.alpha = mapAlpha[i+","+j];
+                t.alpha = mapAlpha[i+','+j];
                 //t.alpha = 1;
             }
         }
     }
-    document.getElementById('gameInfo').innerHTML = '<h1 style="float: left">Player Name: ' + level.playerName + '</h1><h1 style="float: right">Dungeon Level: ' + (level.levelNumber + 1) + '</h1>';
+    document.getElementById('gameInfo').innerHTML = '<h1 style="float: left">Player Name: ' + playerName + '</h1><h1 style="float: right">Dungeon Level: ' + (level.levelNumber + 1) + '</h1>';
     renderer.render(app.stage);
 });
 socket.on('missing', function(err) {
@@ -129,11 +137,7 @@ socket.on('missing', function(err) {
         if (uuid) {
             socket.emit('load game', uuid);
         } else {
-            if (name) {
-                socket.emit('new game', name);
-            } else {
-                socket.emit('new game', defaultName);
-            }
+            screenWithText('Error: Unable to continue with the game.');
         }
     } else if (err === 'load') {
         // Display error screen. Unable to load the game.
@@ -145,9 +149,9 @@ socket.on('missing', function(err) {
 
 // Texture loading of font and map sprite sheets.
 PIXI.loader
-    .add('level', "assets/level_creatures.json")
-    .add('level_new', "assets/level_creatures_new.json")
-    .add(["assets/orange_font.json", "assets/white_font.json", "assets/grey_font.json", "assets/blue_font.json"])
+    .add('level', 'assets/level_creatures.json')
+    .add('level_new', 'assets/level_creatures_new.json')
+    .add(['assets/orange_font.json', 'assets/white_font.json', 'assets/grey_font.json', 'assets/blue_font.json'])
     .load(setup);
 
 function setup() {
@@ -282,11 +286,11 @@ function setup() {
         };
 
         period.press = () => {
-            useStairs(">");
+            useStairs('>');
         };
 
         comma.press = () => {
-            useStairs("<");
+            useStairs('<');
         };
     }
 
@@ -304,25 +308,42 @@ function setup() {
 
     // mapTiles is alias for all the texture atlas frame id textures
     // openDoorTexture is the texture swapped on the canvas when a player steps on a door tile
-    var levelTilesPack = 'level' + (tileSets ? "" : "_new");
-    var doorTilePack = 'assets/openDoor' + (tileSets ? "" : "_new") + '.png';
+    var levelTilesPack = 'level' + (tileSets ? '' : '_new');
+    var doorTilePack = 'assets/openDoor' + (tileSets ? '' : '_new') + '.png';
     mapTiles = resources[levelTilesPack].textures;
     openDoorTexture =  PIXI.Texture.fromImage(doorTilePack);
 
 
     if (confirm("Press 'OK' to start a NEW GAME\nPress 'Cancel' to LOAD GAME from a UUID.")) {
-        var newPlayer = prompt("Please enter your name", defaultName);
-        if (newPlayer == null || newPlayer == "") {
-            socket.emit('new game', defaultName);
-        } else {
-            socket.emit('new game', newPlayer);
+        playerName = prompt('Please enter your name', defaultName);
+        if (playerName == null || playerName == '') {
+            playerName = defaultName;
         }
+        socket.emit('new game', playerName);
     } else {
-        var loadUUID = prompt("Please enter UUID to load", "");
-        if (loadUUID == null || loadUUID == "") {
-            socket.emit('new game', defaultName);
+        
+        var promptStr = '';
+        var saves = getLocalStorageSaves();
+        console.log(saves);
+        if (saves[1].saveID) {
+            promptStr = 'Enter the UUID to load or the number next to a previously played game.\n';
+            for (var i = 1; i <= maxSaves; i++) {
+                if (saves[i].saveID) {
+                    promptStr += i + ') ' + saves[i].name + ' : ' + saves[i].saveID + '\n';
+                }
+            }
         } else {
-            socket.emit('load game', loadUUID);
+            promptStr = 'Enter the UUID to load:';
+        }
+        var loadID = prompt(promptStr, '');
+        if (loadID == null || loadID == '') {
+            screenWithText("Error: Unable to load game.");
+        } else {
+            if (loadID <= maxSaves && loadID >= 1) {
+                socket.emit('load game', saves[loadID].saveID);
+            } else {
+                socket.emit('load game', loadID);
+            }
         }
     }
 
@@ -356,11 +377,11 @@ function play(delta) {
             socket.emit('move', [player_x, player_y]);
             if (level.map[player_x+','+player_y] === '+') {
                 level.map[player_x+','+player_y] = '-';
-                mapSprites[player_x+","+player_y].texture = openDoorTexture;
+                mapSprites[player_x+','+player_y].texture = openDoorTexture;
             }
         
             if (isMobile) {
-                if ((level.map[player_x+","+player_y] === "<") || (level.map[player_x+","+player_y] === ">")) {
+                if ((level.map[player_x+','+player_y] === '<') || (level.map[player_x+','+player_y] === '>')) {
                     document.getElementById('stairsButton').style.visibility = "visible";
                 } else {
                     document.getElementById('stairsButton').style.visibility = "hidden";
@@ -381,7 +402,7 @@ function canWalk(x, y) {
         return false;
     }
 
-    switch (level.map[x+","+y]) {
+    switch (level.map[x+','+y]) {
         case ' ':
         case '#':
             return false;
@@ -393,7 +414,7 @@ function canWalk(x, y) {
 // Handles drawing the dungeon level and deleting the old floor when the player changes floors
 function updateMap() {
     clearApp();
-    player = new Sprite(mapTiles["player"]);
+    player = new Sprite(mapTiles['player']);
     player.position.set(tileSize * level.playerX,
                         tileSize * level.playerY);
     player.vx = 0;
@@ -408,9 +429,9 @@ function updateMap() {
 // Helper function to place tiles into the application using sprites from the spritesheet
 function placeTile(tileName, x, y) {
     var tile = null;
-    if (tileName == "openDoor") {
+    if (tileName == 'openDoor') {
         tile = new Sprite(openDoorTexture);
-    } else if (tileName !== " ") {
+    } else if (tileName !== ' ') {
         tile = new Sprite(mapTiles[tileName]);
     }
     if (tile) {
@@ -426,9 +447,9 @@ function placeTile(tileName, x, y) {
 function drawText(str, start_x, start_y, color) {
     if (color == null) {
         if (tileSets) {
-            color = "orange";
+            color = 'orange';
         } else {
-            color = "blue";
+            color = 'blue';
         }
     }
     lines = str.split('\n');
@@ -439,23 +460,23 @@ function drawText(str, start_x, start_y, color) {
             drawText(line, start_x, (start_y + lineSpacing) + (i * fontHeight), color);
         });
     } else {
-        font = PIXI.loader.resources["assets/" + color + "_font.json"].textures;
+        font = PIXI.loader.resources['assets/' + color + '_font.json'].textures;
         let x = start_x, y = start_y;
         for (let i = 0, len = str.length; i < len; i++) {
             let character, charAt = str.charAt(i);
-            if (charAt == "!") {
-                character = "_exclamation";
-            } else if (charAt == ":") {
-                character = "_colon"; 
-            } else if (charAt == ".") {
-                character = "_period";
+            if (charAt == '!') {
+                character = '_exclamation';
+            } else if (charAt == ':') {
+                character = '_colon'; 
+            } else if (charAt == '.') {
+                character = '_period';
             } else if (charAt == charAt.toLowerCase()) {
-                character = charAt + "_l";
+                character = charAt + '_l';
             } else if (charAt == charAt.toUpperCase()) {
-                character = charAt.toLowerCase() + "_u";
+                character = charAt.toLowerCase() + '_u';
             }
 
-            let sprite = new Sprite(font[character + ".png"]);
+            let sprite = new Sprite(font[character + '.png']);
             sprite.position.set(x, y);
             gameTiles.addChild(sprite);
             x += fontSize;
@@ -536,10 +557,10 @@ function keyboard(keyCode) {
 
     //Attach event listeners
     window.addEventListener(
-        "keydown", key.downHandler.bind(key), false
+        'keydown', key.downHandler.bind(key), false
     );
     window.addEventListener(
-        "keyup", key.upHandler.bind(key), false
+        'keyup', key.upHandler.bind(key), false
     );
     return key;
 }
@@ -590,11 +611,11 @@ function useStairs(keyPressed) {
     if (keyPressed ===  level.map[getPlayerX()+','+getPlayerY()]) {
         if (keyPressed === '>') {
             state = error;
-            screenWithText("Loading...");
+            screenWithText('Loading...');
             socket.emit('request', 'floor down');
         } else if (keyPressed === '<') {
             state = error;
-            screenWithText("Loading...");
+            screenWithText('Loading...');
             socket.emit('request', 'floor up');    
         }
     }
@@ -624,4 +645,85 @@ function clearApp() {
     if (player)
         app.stage.removeChild(player);
     
+}
+
+function getLocalStorageSaves() {
+    if (checkStorageCompatibility()) {
+        var saves = {};
+        var storage1 = localStorage.getItem('save1');
+        var storage2 = localStorage.getItem('save2');
+        var storage3 = localStorage.getItem('save3');
+        var storage4 = localStorage.getItem('save4');
+        var storage5 = localStorage.getItem('save5');
+        
+        var save1 = storage1 ? storage1.split(':') : ['',''];
+        var save2 = storage2 ? storage2.split(':') : ['',''];
+        var save3 = storage3 ? storage3.split(':') : ['',''];
+        var save4 = storage4 ? storage4.split(':') : ['',''];
+        var save5 = storage5 ? storage5.split(':') : ['',''];
+
+        saves[1] = {name: save1[0], saveID: save1[1]};
+        saves[2] = {name: save2[0], saveID: save2[1]};
+        saves[3] = {name: save3[0], saveID: save3[1]};
+        saves[4] = {name: save4[0], saveID: save4[1]};
+        saves[5] = {name: save5[0], saveID: save5[1]};
+        
+        return saves;
+    }
+    return null;
+}
+
+function setLocalStorageSaves(name, saveID) {
+    if (checkStorageCompatibility()) {
+        // TODO: Currently whenever a player is loaded, the data for the play in the next slot will be cloned
+        // Example: Saves named 1) Dennis 2) Griffin 3) James 4) Alex 5) Tracey. If Dennis is loaded, Griffin
+        // will take up slots 2 and 3. If James is loaded, Alex would take up 4 and 5
+        removeDuplicateStorageHelper(1, saveID);
+        setLocalStorageHelper(maxSaves, name+':'+saveID);
+
+        return true;
+    }
+    return false;
+}
+
+// If the player is trying to add a duplicate save, set the save in storage to null,
+// then add the save as if it were any other
+// function to add saves should get rid of empty saves by shifting the save slot below up.
+
+
+// Moves saves down 1 slot
+// Returns the value to be saved in previous slot
+// save1 = setLocalStorageHelper call for slot2
+function setLocalStorageHelper(slot, saveInfo) {
+    // TODO: call to end recursion. will be the value for save slot 1 I believe.
+    // TODO: shift empty saves up to proper spot
+    if (slot < 1)  return;
+    if (slot === 1) { 
+        localStorage.setItem('save1', saveInfo);
+        return;
+    }
+    var data = localStorage.getItem('save'+(slot-1));
+    if (data) {
+        localStorage.setItem('save'+slot, data);
+    }
+    setLocalStorageHelper(slot-1, saveInfo);
+}
+
+function removeDuplicateStorageHelper(slot, saveID) {
+    if (slot > maxSaves) { return true; }
+    var saveData = localStorage.getItem('save'+slot);
+    if (saveData) {
+        if (saveData.split(':')[1] === saveID) {
+            localStorage.setItem('save'+slot, '');
+        }
+    }
+    return removeDuplicateStorageHelper(slot+1, saveID);
+}
+
+function checkStorageCompatibility() {
+    if (typeof(Storage) !== 'undefined') {
+        return true;
+    } else {
+        return false;
+    }
 }

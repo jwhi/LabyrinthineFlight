@@ -55,7 +55,7 @@ io.on('connection', function(socket) {
         //  create table saves(uuid text primary key, name text, x integer, y integer, seed integer, currentFloor integer, maxFloor integer, map text, alpha text);
         db.run(`INSERT INTO saves VALUES ($uuid, $name, $x, $y, $seed, $currentFloor, $maxFloor, $map, $alpha)`, {
                     $uuid: uuid,
-                    $name: name,
+                    $name: playerName,
                     $x: dungeon.getCurrentFloor().playerX,
                     $y: dungeon.getCurrentFloor().playerY,
                     $seed: seed,
@@ -64,13 +64,13 @@ io.on('connection', function(socket) {
                     $map: JSON.stringify(dungeon.getCurrentFloor().map),
                     $alpha: JSON.stringify(dungeon.mapAlphaValues())
         });
-        socket.emit('gameID', uuid);
+        socket.emit('playerInfo', {name: playerName, saveID: uuid});
     });
     socket.on('load game', function(loadID) {
         db.get(`SELECT * FROM saves WHERE uuid = $uuid;`, { $uuid: loadID },
         function(err, row) {
             if (err || !row) {
-                if (err) console.error(err.message);
+                if (err) { console.error(err.message); return; }
                 socket.emit('missing','load');
             } else {
                 uuid = loadID;
@@ -81,10 +81,8 @@ io.on('connection', function(socket) {
                 dungeon.setAlphaValues(JSON.parse(row.alpha));
                 dungeon.getCurrentFloor().playerX = row.x;
                 dungeon.getCurrentFloor().playerY = row.y;
-                socket.emit('debug', 'player name = ' + playerName);
-                socket.emit('debug', 'current floor = ' + dungeon.floorNumber);
                 socket.emit('dungeon', dungeon.getCurrentFloor());
-                socket.emit('gameID', uuid);
+                socket.emit('playerInfo', {name: playerName, saveID: uuid});
             }
         });
     });
