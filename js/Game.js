@@ -324,7 +324,6 @@ function setup() {
         
         var promptStr = '';
         var saves = getLocalStorageSaves();
-        console.log(saves);
         if (saves[1].saveID) {
             promptStr = 'Enter the UUID to load or the number next to a previously played game.\n';
             for (var i = 1; i <= maxSaves; i++) {
@@ -678,9 +677,9 @@ function setLocalStorageSaves(name, saveID) {
         // TODO: Currently whenever a player is loaded, the data for the play in the next slot will be cloned
         // Example: Saves named 1) Dennis 2) Griffin 3) James 4) Alex 5) Tracey. If Dennis is loaded, Griffin
         // will take up slots 2 and 3. If James is loaded, Alex would take up 4 and 5
-        removeDuplicateStorageHelper(1, saveID);
-        setLocalStorageHelper(maxSaves, name+':'+saveID);
-
+        var saveInfo = name+':'+saveID;
+        removeDuplicateStorageHelper(1, saveInfo);
+        addSaveLocalStorage(5, saveInfo);
         return true;
     }
     return false;
@@ -691,33 +690,33 @@ function setLocalStorageSaves(name, saveID) {
 // function to add saves should get rid of empty saves by shifting the save slot below up.
 
 
-// Moves saves down 1 slot
-// Returns the value to be saved in previous slot
-// save1 = setLocalStorageHelper call for slot2
-function setLocalStorageHelper(slot, saveInfo) {
-    // TODO: call to end recursion. will be the value for save slot 1 I believe.
-    // TODO: shift empty saves up to proper spot
+function addSaveLocalStorage(slot, saveInfo) {
     if (slot < 1)  return;
     if (slot === 1) { 
         localStorage.setItem('save1', saveInfo);
         return;
     }
-    var data = localStorage.getItem('save'+(slot-1));
-    if (data) {
-        localStorage.setItem('save'+slot, data);
-    }
-    setLocalStorageHelper(slot-1, saveInfo);
+    moveLocalStorageSave(slot-1, slot);
+    addSaveLocalStorage(slot-1, saveInfo);
 }
 
-function removeDuplicateStorageHelper(slot, saveID) {
+function removeDuplicateStorageHelper(slot, saveInfo, counter) {
+    if (!counter) { counter=0; }
     if (slot > maxSaves) { return true; }
+    if (counter > maxSaves-slot) { return true; }
     var saveData = localStorage.getItem('save'+slot);
-    if (saveData) {
-        if (saveData.split(':')[1] === saveID) {
-            localStorage.setItem('save'+slot, '');
-        }
+    if (saveData == saveInfo || !saveData) {
+        moveLocalStorageSave(slot+1,slot);
+        return removeDuplicateStorageHelper(slot, saveInfo, counter+1);
     }
-    return removeDuplicateStorageHelper(slot+1, saveID);
+    return removeDuplicateStorageHelper(slot+1, saveInfo, 0);
+}
+
+function moveLocalStorageSave(from, to) {
+    if (from < 1 || from > maxSaves || to < 1 || from > maxSaves) return false;
+    localStorage.setItem('save'+to, localStorage.getItem('save'+from));
+    localStorage.setItem('save'+from, '');
+    return true;
 }
 
 function checkStorageCompatibility() {
