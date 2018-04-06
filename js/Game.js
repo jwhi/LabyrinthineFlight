@@ -15,7 +15,6 @@ const defaultAlpha = 0;
 const defaultName = 'Prisoner';
 
 // Socket for interactions with the server
-var socket = io();
 
 // Dungeon object received from the server.
 var level;
@@ -76,6 +75,8 @@ var mapTiles, openDoorTexture;
 // and redrawn easily after a player changes floors
 var gameTiles = new PIXI.Container();
 
+var socket;
+
 let app = new Application({
     width: appWidth,
     height: appHeight,
@@ -85,67 +86,6 @@ let app = new Application({
 });
 
 
-// Sockets handled by Socket.io
-// When the page receives these packets, update the webpage as needed
-socket.on('debug', function(message) {
-    console.log(message);
-});
-socket.on('dungeon', function(dungeonFloor) {
-    level = dungeonFloor;
-    var str = '';
-    for (var y = 0; y < mapHeight; y++) {
-        for (var x = 0; x < mapWidth; x++) {
-            str += level.map[x+','+y];
-        }
-        str += '\n';
-    }
-    console.log(str);
-    updateMap();
-    // Set the game state to play
-    state = play;
-});
-socket.on('playerInfo', function(playerInfo) {
-        playerName = playerInfo.name;
-        uuid = playerInfo.saveID;
-        document.getElementById('saveID').innerHTML = '<h1>' + uuid + '</h1>';
-        setLocalStorageSaves(playerName, uuid);
-});
-socket.on('tileNames', function(tileNames) {
-    for (let y = 0; y < mapHeight; y++) {
-        for (let x = 0; x < mapWidth; x++) {
-            mapSprites[x+','+y] = placeTile(tileNames[x+','+y], x * tileSize, y * tileSize);
-        }
-    }
-    app.stage.addChild(gameTiles);
-    gameTiles.addChild(player);
-});
-socket.on('mapAlphaValues', function(mapAlpha) {
-    for (var j = 0; j < mapHeight; j++) {
-        for (var i = 0; i < mapWidth; i++) {
-            var t = mapSprites[i+','+j];
-            if (t) {
-                t.alpha = mapAlpha[i+','+j];
-                //t.alpha = 1;
-            }
-        }
-    }
-    document.getElementById('gameInfo').innerHTML = '<h1 style="float: left">Player Name: ' + playerName + '</h1><h1 style="float: right">Dungeon Level: ' + (level.levelNumber + 1) + '</h1>';
-    renderer.render(app.stage);
-});
-socket.on('missing', function(err) {
-    if (err === 'no dungeon') {
-        if (uuid) {
-            socket.emit('load game', uuid);
-        } else {
-            screenWithText('Error: Unable to continue with the game.');
-        }
-    } else if (err === 'load') {
-        // Display error screen. Unable to load the game.
-        screenWithText('Error: No save found with that UUID.');
-        document.getElementById('addedControls').innerHTML = '';
-        state = error;
-    }
-});
 
 // Texture loading of font and map sprite sheets.
 PIXI.loader
@@ -153,6 +93,11 @@ PIXI.loader
     .add('level_new', 'assets/level_creatures_new.json')
     .add(['assets/orange_font.json', 'assets/white_font.json', 'assets/grey_font.json', 'assets/blue_font.json'])
     .load(setup);
+
+
+
+
+
 
 function setup() {
     // If the site is being loaded from a mobile device, add touch screen arrow keys
@@ -294,34 +239,19 @@ function setup() {
         };
     }
 
-    // Start the game loop by adding the `gameLoop` function to
-    // Pixi's `ticker` and providing it with a 'delta' argument
-    app.ticker.add(delta=>gameLoop(delta));
-
-    // Add the canvas that Pixi automatically created to the HTML document
-    document.getElementById('gameScreen').appendChild(renderer.view);
-
-    //screenWithText('Welcome to Labyrinthine Flight!', 'white');
-    resize();
 
     tileSets = confirm('Press OK to use the classic tiles.\nPress Cancel to use new tiles.');
-
-    // mapTiles is alias for all the texture atlas frame id textures
-    // openDoorTexture is the texture swapped on the canvas when a player steps on a door tile
-    var levelTilesPack = 'level' + (tileSets ? '' : '_new');
-    var doorTilePack = 'assets/openDoor' + (tileSets ? '' : '_new') + '.png';
-    mapTiles = resources[levelTilesPack].textures;
-    openDoorTexture =  PIXI.Texture.fromImage(doorTilePack);
-
+    var newGame;
+    var dialogValue = '';
 
     if (confirm("Press 'OK' to start a NEW GAME\nPress 'Cancel' to LOAD GAME from a UUID.")) {
         playerName = prompt('Please enter your name', defaultName);
         if (playerName == null || playerName == '') {
             playerName = defaultName;
         }
-        socket.emit('new game', playerName);
+        newGame = true;
+        dialogValue = playerName;
     } else {
-        
         var promptStr = '';
         var saves = getLocalStorageSaves();
         if (saves[1].saveID) {
@@ -339,13 +269,103 @@ function setup() {
             screenWithText("Error: Unable to load game.");
         } else {
             if (loadID <= maxSaves && loadID >= 1) {
-                socket.emit('load game', saves[loadID].saveID);
+                newGame = false;
+                dialogValue = saves[loadID].saveID;
             } else {
-                socket.emit('load game', loadID);
+                newGame = false;
+                dialogValue = loadID;
             }
         }
     }
 
+    socket = io();
+    // Sockets handled by Socket.io
+    // When the page receives these packets, update the webpage as needed
+    socket.on('debug', function(message) {
+        console.log(message);
+    });
+    socket.on('dungeon', function(dungeonFloor) {
+        level = dungeonFloor;
+        var str = '';
+        for (var y = 0; y < mapHeight; y++) {
+            for (var x = 0; x < mapWidth; x++) {
+                str += level.map[x+','+y];
+            }
+            str += '\n';
+        }
+        console.log(str);
+        updateMap();
+        // Set the game state to play
+        state = play;
+    });
+    socket.on('playerInfo', function(playerInfo) {
+            playerName = playerInfo.name;
+            uuid = playerInfo.saveID;
+            document.getElementById('saveID').innerHTML = '<h1>' + uuid + '</h1>';
+            setLocalStorageSaves(playerName, uuid);
+    });
+    socket.on('tileNames', function(tileNames) {
+        for (let y = 0; y < mapHeight; y++) {
+            for (let x = 0; x < mapWidth; x++) {
+                mapSprites[x+','+y] = placeTile(tileNames[x+','+y], x * tileSize, y * tileSize);
+            }
+        }
+        app.stage.addChild(gameTiles);
+        gameTiles.addChild(player);
+    });
+    socket.on('mapAlphaValues', function(mapAlpha) {
+        for (var j = 0; j < mapHeight; j++) {
+            for (var i = 0; i < mapWidth; i++) {
+                var t = mapSprites[i+','+j];
+                if (t) {
+                    t.alpha = mapAlpha[i+','+j];
+                    //t.alpha = 1;
+                }
+            }
+        }
+        document.getElementById('gameInfo').innerHTML = '<h1 style="float: left">Player Name: ' + playerName + '</h1><h1 style="float: right">Dungeon Level: ' + (level.levelNumber + 1) + '</h1>';
+        renderer.render(app.stage);
+    });
+    socket.on('missing', function(err) {
+        if (err === 'no dungeon') {
+            if (uuid) {
+                socket.emit('load game', uuid);
+            } else {
+                screenWithText('Error: Unable to continue with the game.');
+            }
+        } else if (err === 'load') {
+            // Display error screen. Unable to load the game.
+            screenWithText('Error: No save found with that UUID.');
+            document.getElementById('addedControls').innerHTML = '';
+            state = error;
+        }
+    });
+    
+
+
+
+    if (newGame) {
+        socket.emit('new game', dialogValue);
+    } else {
+
+        socket.emit('load game', dialogValue);
+    }
+    // Start the game loop by adding the `gameLoop` function to
+    // Pixi's `ticker` and providing it with a 'delta' argument
+    app.ticker.add(delta=>gameLoop(delta));
+
+    // Add the canvas that Pixi automatically created to the HTML document
+    document.getElementById('gameScreen').appendChild(renderer.view);
+
+    //screenWithText('Welcome to Labyrinthine Flight!', 'white');
+    resize();
+
+    // mapTiles is alias for all the texture atlas frame id textures
+    // openDoorTexture is the texture swapped on the canvas when a player steps on a door tile
+    var levelTilesPack = 'level' + (tileSets ? '' : '_new');
+    var doorTilePack = 'assets/openDoor' + (tileSets ? '' : '_new') + '.png';
+    mapTiles = resources[levelTilesPack].textures;
+    openDoorTexture =  PIXI.Texture.fromImage(doorTilePack);
     // Add save button
     document.getElementById('addedControls').innerHTML += '<button class="button" onclick="save();">Save</button>';    
     // Resize the game window to the browser window so player does not need to scroll
