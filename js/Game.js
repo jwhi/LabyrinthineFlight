@@ -7,7 +7,7 @@ const fontSize =  24;
 const fontHeight = 32;
 const lineSpacing = 8;
 
-const maxSaves = 5;
+const maxSaves = 8;
 
 // Used when first drawing tiles to the screen. Mostly for testing
 const defaultAlpha = 0;
@@ -669,27 +669,19 @@ function clearApp() {
 function getLocalStorageSaves() {
     if (checkStorageCompatibility()) {
         var saves = {};
-        var storage1 = localStorage.getItem('save1');
-        var storage2 = localStorage.getItem('save2');
-        var storage3 = localStorage.getItem('save3');
-        var storage4 = localStorage.getItem('save4');
-        var storage5 = localStorage.getItem('save5');
-        
-        var save1 = storage1 ? storage1.split(':') : ['',''];
-        var save2 = storage2 ? storage2.split(':') : ['',''];
-        var save3 = storage3 ? storage3.split(':') : ['',''];
-        var save4 = storage4 ? storage4.split(':') : ['',''];
-        var save5 = storage5 ? storage5.split(':') : ['',''];
-
-        saves[1] = {name: save1[0], saveID: save1[1]};
-        saves[2] = {name: save2[0], saveID: save2[1]};
-        saves[3] = {name: save3[0], saveID: save3[1]};
-        saves[4] = {name: save4[0], saveID: save4[1]};
-        saves[5] = {name: save5[0], saveID: save5[1]};
+        for (var i = 1; i <= maxSaves; i++) {
+            saves[i] = getLocalStorageSaveObject(i);
+        }
         
         return saves;
     }
     return null;
+}
+
+function getLocalStorageSaveObject(slot) {
+    var storage = localStorage.getItem('save'+slot);
+    var saveObject = storage ? storage.split(':') : ['',''];
+    return {name: saveObject[0], saveID: saveObject[1]};
 }
 
 function setLocalStorageSaves(name, saveID) {
@@ -699,7 +691,7 @@ function setLocalStorageSaves(name, saveID) {
         // will take up slots 2 and 3. If James is loaded, Alex would take up 4 and 5
         var saveInfo = name+':'+saveID;
         removeDuplicateStorageHelper(1, saveInfo);
-        addSaveLocalStorage(5, saveInfo);
+        addSaveLocalStorage(maxSaves, saveInfo);
         return true;
     }
     return false;
