@@ -1,25 +1,397 @@
-Distinctive
-Victorious
-Liberator
-Defiant
-Demonologist
-Frozen
-Lurking
-Low
-Vanglorious
-Spiteful
-Guardian
-Twisted
-Conqueror
+Above Average
+Accident Prone
+Admiral
+Adventurer
+Adventuring Instructor
+Ally
+Ambassador
+Amiable
+Apostle
+Archangel
+Archdruid 
+Architect
+Archmage
+Arena Master
+Arrowdodger
+Artisan
+Ashen
+Assassin
+Associate
+Astonishing
+Astral Walker
+Avatar
 Avenger
-Deceitful
-Heroic
-Just
-Sane
+Bait
+Balanced
+Bane
+Bane of the King
+Banished
+Battlelord
+Battlemaster
+Beloved
+Berserker
+Blabbing
+Blade
+Blaze Snuffer
+Blessed Defender
+Blood Champion
+Blood Guard
+Blooded
+Bloodknight
+Bloodseeker
+Bloodthirsty
+Body Butcher
+Body Searcher
+Bone Breaker
+Boulder Pulverizer
+Bounty Hunter
+Brawler
+Brewmaster
+Brutal Gladiator
+Brute
+Brutecleaver
+Butcher
+Cannon Fodder
+Captain
+Carcass Carver
+Casket Filler
+Celebrity
+Celestial Defender
+Centurion
+Challenger
+Champion
+Charismatic
+Chef
+Chicken Chaser
+Chosen
+Chosen One
+Chuckler
+Collector
+Colorblind
+Commander
+Commando
+Concoctioner
+Confessor
 Confident
-Soft-Spoken
-Tormented
-Unknown
-Younger
+Conjurer    
+Conqueror
+Conscript
+Conservationist
+Corporal
+Corpse Cutter
+Crusader
+Crusher
+Cursed
+Cutpurse
+Daisy Pusher
+Darkener
+Darkmaster
+Dashing
+Deadly Gladiator
+Death Defier
+Death Stalker
+Deathbringer
+Deathlord
+Debris Destroyer
+Deceitful
+Defender
+Defender of a Shattered World
+Defender of the Wall
+Defiant
+Defiler
+Delver of the Vaults
+Demonic Gladiator
+Demonologist
+Demonslayer
+Denied
+Denier of Disease
+Desperado
+Destroyer
+Destroyer's End
+Devoted Inquirer
+Diplomat
+Dismantled
+Dissector
+Distinctive
+Dockmaster
+Dog Lover
+Doom Bringer
+Dragonslayer
+Dreamer
+Druid
+Duelist
+Dumpling
+Easy Target
+Echo Hunter
+Egomaniac
+Elder
+Eminent
+Emperor
 Enchanter
-Re-Animated
+Evangelist
+Exalted
+Executioner
+Exhibitionist
+Exiler
+Explorer
+Exporter
+Extravagant
+Fabulous
+Farmer
+Fashionable
+Fearless
+Fearmonger
+Feckless
+Field Marshal
+Field Medic
+Fine Fuser
+Fire Snuffer
+Firelord
+Fire-Watcher
+First Sergeant
+Fisher
+Flame Keeper
+Flamebreaker
+Flameweaver
+Flawless Victor
+Flirt
+Foe of the Cannibal
+Fowl Finisher
+Friendly
+Frightful
+Frisky
+Frost
+Frozen
+Garbage Disposal
+Gardener
+General
+Gladiator
+Gorgeous
+Gourmand
+Grandmaster
+Great
+Green
+Griffonslayer
+Groundbreaker
+Grounded
+Grunt
+Guardian
+Guardian
+Gullible
+Hallowed
+Harvester
+Headmaster
+Heedless
+Herald
+Hero
+Heroic
+Hexed
+Highlord
+Hoarder
+Honorable
+Hood
+Hopebringer
+Hornsnapper
+Hound Hunter
+Howler
+Huntmaster
+Huntsman
+Immortal
+Indomitable
+Influential
+Insane
+Iron Bender
+Joker
+Judged
+Juggler
+Just
+Keep Crippler
+Keep Krusher
+Keep Raider
+Killer
+King
+Kingslayer
+Knight
+Lame Duck
+Lead Lopper
+Legend
+Legionary
+Legionnaire
+Liberator
+Light of Dawn
+Lightbringer
+Lint Looter
+Lionheart
+Litter Bug
+Loaded
+Locust
+Loot Harlot
+Lord Lasher
+Loremaster
+Love Fool
+Low
+Lucky
+Lumberjack
+Lurking
+Magic Seeker
+Maleficus
+Manipulator
+Manslayer
+Mark
+Master
+Master Chief
+Mauler
+Mayor
+Meat Shield
+Narcissist
+Navigator
+Necromancer
+Never-Rester
+Night
+Nobhead
+Noble
+Ogler
+Omnipresent
+Omniscient
+Oppressor
+Opulent
+Overachiever
+Pack Hunter
+Painmaster
+Paladin
+Pancake
+Patient
+Patron
+Pawner
+Peacekeeper
+Pebble Pulverizer
+Peculiar
+Peddler
+Peon
+Piemaster
+Piledigger
+Pilgrim
+
+Pin Cushion
+Pioneer
+Pirate
+Pivotal Force
+Plunderer
+Poisoned
+Poser
+Postmaster
+Power Hungry
+Predator
+Present
+Prestigious
+Priest
+Professor
+Prolific
+Prominent
+Psychopath
+Punctured
+Purified
+Purifier
+Queen
+Ranger
+Ravenslayer
+Reanimated
+Reaper
+Reclusive
+Regal
+Relentless
+Remains Robber
+Renown
+Repelled
+Revolutionary
+Rival
+Road Warden
+Rock Pulverizer
+Routed
+Rubbish Remover
+Runemaster
+Sabre
+Salad Dodger
+Salty
+Sane
+Scale Breaker
+Scout
+Scrapper
+Seeker
+Self-Centered
+Shadowblade
+Shadowfiend 
+Shattered
+Showman
+Showoff
+Singed
+Skeleton Hunter
+Skinner
+Slayer
+Snob
+Socialite
+Soft Spoken
+Soul
+Spark Snuffer
+Sparrow
+Spite Splitter
+Spiteful
+Stable Master
+Starcaller
+Steel Bender
+Stone
+Stonewalled
+Storm
+Stormbreaker
+Stormbrewer
+Stylist
+Supporter
+Talker
+Tamer
+Target
+Tease
+Timelord
+Tin Bender
+Tooth Skinner
+Topper
+Tormented
+Trader
+Tragic
+Trained
+Trainer
+Tranquil
+Trendy
+Troll
+Trooper
+Twilight
+Twilight
+Twisted
+Tyrannical
+Unbalanced
+Uncoordinated
+Undying
+Unknown
+Unrelenting
+Vain
+Validated
+Vamp
+Vanglorious
+Vanquisher
+Verbose
+Veteran
+Vicious
+Victim
+Victorious
+Violet
+Voyeur
+Warlord
+Warlord
+Wasteful
+Watcher
+Wild
+Wind
+Wise
+World Shaper
+Wrathful
+Younger
+
