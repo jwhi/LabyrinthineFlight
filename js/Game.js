@@ -2,26 +2,34 @@
 // had issues with scaling sprites that small
 const tileSize = 64;
 
-// Width in pixels of the textures used for fonts
+// Width and height in pixels of the textures used for fonts
 const fontSize =  24;
 const fontHeight = 32;
+
+// Should add spaces between lines being drawn to the screen using drawText that contains new line characters
+// Currently does not work
 const lineSpacing = 8;
 
-const maxSaves = 8;
+// Max number of saves to be displayed in the client's game window. Fully customizable but setting this number too large
+// can make the alert window be overwhelming for users.
+const maxSaves = 5;
 
 // Used when first drawing tiles to the screen. Mostly for testing
-const defaultAlpha = 0;
+const defaultAlpha = 1;
 
+// Default player name to be displayed in the 'New Game' alert window.
 const defaultName = 'Prisoner';
-
-// Socket for interactions with the server
 
 // Dungeon object received from the server.
 var level;
 
+// Variable that determines which graphics the player wants to use. True for Loveable Rogue by Surt. Cancel to use Tiny 16 by Lanea Zimmerman
 var tileSets = false;
 
+// Stores the player's name after a new game is started or a game is loaded from the server
 var playerName = '';
+
+// Stores the game's save ID. Received from the server after a new game begins or a game is loaded from the server.
 var uuid;
 
 // Map sprites stores all the map sprites currently drawn on the screen
@@ -75,6 +83,7 @@ var mapTiles, openDoorTexture;
 // and redrawn easily after a player changes floors
 var gameTiles = new PIXI.Container();
 
+// Holds the socket that handles communication with the server from Socket.IO. Set in the setup function along with the socket's listening events.
 var socket;
 
 let app = new Application({
@@ -99,6 +108,12 @@ PIXI.loader
 
 
 
+/**
+ * setup
+ * Called after PIXI loads assets. Once assets are loaded, begin adding on-screen controls and listening
+ * for keyboard events. Where the player alert boxes are and the events for socket.io are defined.
+ * @returns Does not return any value. End of the program until a socket is received from the server.
+ */
 function setup() {
     // If the site is being loaded from a mobile device, add touch screen arrow keys
     // and a button that appears when player is standing on stairs.
@@ -239,7 +254,7 @@ function setup() {
         };
     }
 
-
+    // The game uses JS alert windows until a proper main menu can be programmed.
     tileSets = confirm('Press OK to use the classic tiles.\nPress Cancel to use new tiles.');
     var newGame;
     var dialogValue = '';
@@ -252,6 +267,8 @@ function setup() {
         newGame = true;
         dialogValue = playerName;
     } else {
+        // If the player has saves stored on their local machine, display them in the load window.
+        // Player can enter the full save ID or enter the number associated with a save slot.
         var promptStr = '';
         var saves = getLocalStorageSaves();
         if (saves[1].saveID) {
@@ -284,6 +301,9 @@ function setup() {
     socket.on('debug', function(message) {
         console.log(message);
     });
+    // The dungeon object received from the server. Defined in the server's Rogue.js file
+    // Dungeons are only received at the start of games and when player travels up or down a staircase.
+    // Prints the maps layout to debug console for testing. Calls updateMap to to prepare drawing the map tiles.
     socket.on('dungeon', function(dungeonFloor) {
         level = dungeonFloor;
         var str = '';
@@ -295,15 +315,19 @@ function setup() {
         }
         console.log(str);
         updateMap();
-        // Set the game state to play
-        state = play;
     });
+    // Player info contains the player's name and the game's save ID. Received once a new game begins or a player
+    // loads a game. Display this information on the web page and save to the browser's local storage to allow the
+    // user to load this game again in the future.
     socket.on('playerInfo', function(playerInfo) {
             playerName = playerInfo.name;
             uuid = playerInfo.saveID;
             document.getElementById('saveID').innerHTML = '<h1>' + uuid + '</h1>';
             setLocalStorageSaves(playerName, uuid);
     });
+    // Tile names are determined by the server since the function required function calls that could only be done by the server.
+    // Receieved whenever the player starts a new game or uses stairs. Draw tiles once receieved and set the state to play after
+    // all tiles are drawn to allow the user to start moving the player.
     socket.on('tileNames', function(tileNames) {
         for (let y = 0; y < mapHeight; y++) {
             for (let x = 0; x < mapWidth; x++) {
@@ -312,20 +336,27 @@ function setup() {
         }
         app.stage.addChild(gameTiles);
         gameTiles.addChild(player);
+        document.getElementById('gameInfo').innerHTML = '<h1 style="float: left">Player Name: ' + playerName + '</h1><h1 style="float: right">Dungeon Level: ' + (level.levelNumber + 1) + '</h1>';
+        state = play;
     });
+    // Server handles are the FOV calculation. Received after every time a player makes a successful movement on the map.
+    // Server lag will lead the FOV not following the player and trailing behind.
     socket.on('mapAlphaValues', function(mapAlpha) {
         for (var j = 0; j < mapHeight; j++) {
             for (var i = 0; i < mapWidth; i++) {
                 var t = mapSprites[i+','+j];
                 if (t) {
                     t.alpha = mapAlpha[i+','+j];
-                    //t.alpha = 1;
                 }
             }
         }
-        document.getElementById('gameInfo').innerHTML = '<h1 style="float: left">Player Name: ' + playerName + '</h1><h1 style="float: right">Dungeon Level: ' + (level.levelNumber + 1) + '</h1>';
         renderer.render(app.stage);
     });
+    // If the player disconnects from the server, happens often if playing on a phone and the user locks their screen, the server will no
+    // longer have the player's dungeon data loaded in memory. In order to continue the game, the server needs to discretly load the user's
+    // data to allow them to keep playing. Displays an error screen if there is an issue if the server can't recover. If the server can recover,
+    // the user will snap to the location last saved on the server, but then will be able to continue as normal for the most part. Loading the game
+    // causes all previous floors to lose their map data so exploration will be reset and doors will be closed.
     socket.on('missing', function(err) {
         if (err === 'no dungeon') {
             if (uuid) {
@@ -371,6 +402,13 @@ function setup() {
     // Resize the game window to the browser window so player does not need to scroll
     // to see the entire game board or find where the player is on the screen.
 }
+
+/**
+ * gameLoop
+ * The main loop of the PIXI app. Runs the function assigned to the state variable,
+ * e.g. play, with the delta time
+ * @param delta
+ */
 function gameLoop(delta) {
     // Update the current game state;
     // State does not exist until the level loads. Prevents the player taking control
@@ -378,6 +416,14 @@ function gameLoop(delta) {
     if (state)
         state(delta);
 }
+
+
+/**
+ * play
+ * The game state of the application. The function is called every frame, but game only
+ * updates when the player moves to a valid space.
+ * @param delta
+ */
 function play(delta) {
     // Wait for player to perform an action to end the player's turn
     // Right now the only action the player can make is move
@@ -416,6 +462,17 @@ function play(delta) {
         player.vy = 0;
     }
 }
+
+/**
+ * canWalk
+ * Walking is handled client side to give the user a better gameplay experience.
+ * To test whether a player can move to a tile on the map, check the x,y coordinate
+ * on the map passed to the client from the server. So far, blank tiles and '#' are
+ * they only tiles that block movement
+ * @param x The X value of the tile to be checked
+ * @param y The Y value of the tile to be checked
+ * @returns a boolean that is true for walkable tiles, false for walls
+ */
 function canWalk(x, y) {
     if (x > mapWidth || y > mapHeight || x < 0 || y < 0) {
         return false;
@@ -430,7 +487,11 @@ function canWalk(x, y) {
     }
 }
 
-// Handles drawing the dungeon level and deleting the old floor when the player changes floors
+/**
+ * updateMap
+ * Clears the screen and resets the player. Moves the player to the new floor's location.
+ * Sends requests to the server to get the tile names and alpha values for the new floor.
+ */
 function updateMap() {
     clearApp();
     player = new Sprite(mapTiles['player']);
@@ -445,7 +506,17 @@ function updateMap() {
     
     return true;
 }
-// Helper function to place tiles into the application using sprites from the spritesheet
+
+/**
+ * placeTile
+ * Helper function to place tiles into the application using sprites from the spritesheet.
+ * tileName corresponds to the sprite names in the level tile's JSON file in assets.
+ * X and Y are the coordinates the tile is to be drawn upon the PIXI app.
+ * @param tileName Name of the tile to be drawn. Can be found in the sprite sheets JSON
+ * @param x The X position the tile will be drawn on the PIXI application window
+ * @param y The Y position the tile will be drawn on the PIXI application window
+ * @returns the placed tile so the tile can be assigned to a list to allow the alpha value to be updated.
+ */
 function placeTile(tileName, x, y) {
     var tile = null;
     if (tileName == 'openDoor') {
@@ -461,8 +532,18 @@ function placeTile(tileName, x, y) {
     return tile;
 }
 
-// Draws text using the orange font that is with loveable rogue-like tiles.
-// str is the string you want to draw and x and y are the starting positions for the text.
+/**
+ * drawText
+ * Draws text using the orange font that is with loveable rogue-like tiles.
+ * str is the string you want to draw and x and y are the starting positions for the text.
+ * Color is just limited to orange, white, grey, and blue right now. Based on the textures
+ * proved by Loveable Rogue by Surt. Orange and blue are the only ones programmed currently
+ * because that is all I needed for loading and error screens with the two graphic sets.
+ * @param str The string to be drawn to the screen. Accepts new line characters.
+ * @param start_x Starting x position of text based on the PIXI app coordinates
+ * @param start_y Starting y position of text based on the PIXI app coordinates
+ * @param color Selects the sprite sheet of the font to be used
+ */
 function drawText(str, start_x, start_y, color) {
     if (color == null) {
         if (tileSets) {
@@ -504,8 +585,12 @@ function drawText(str, start_x, start_y, color) {
     
 }
 
-// Returns the player's X value in relation to the map instead of pixels from the right
-// This gives the player's X position in terms the rogue class can understandpl
+/**
+ * getPlayerX
+ * Returns the player's X value in relation to the map instead of pixels from the right
+ * This gives the player's X position in terms the rogue class can understand
+ * @returns The player's X position on the dungeon map. Returns -1 if there is no player defined.
+ */
 function getPlayerX() {
     if (player) {
         return player.x / tileSize;
@@ -513,22 +598,28 @@ function getPlayerX() {
     else
         return -1;
 }
-// Returns the player's Y value in relation to the map instead of pixels from the top
-// This gives the player's Y position in terms the rogue class can understand
+
+/**
+ * getPlayerY
+ * Returns the player's Y value in relation to the map instead of pixels from the top
+ * This gives the player's Y position in terms the rogue class can understand
+ * @returns The player's Y position on the dungeon map. Returns -1 if there is no player defined.
+ */
 function getPlayerY() {
     if (player)
         return player.y / tileSize;
     else
         return -1;
 }
-// Code taken from stack overflow question that linked the js fiddle example.
-// http://jsfiddle.net/2wjw043f/
-// https://stackoverflow.com/questions/30554533/dynamically-resize-the-pixi-stage-and-its-contents-on-window-resize-and-window
+/**
+ * resize
+ * Code taken from stack overflow question that linked the js fiddle example.
+ * http://jsfiddle.net/2wjw043f/
+ * https://stackoverflow.com/questions/30554533/dynamically-resize-the-pixi-stage-and-its-contents-on-window-resize-and-window
+ * This function allows the PIXI application window to resize to fit the browser window.
+ */
 function resize() {        
-    // Ratio is used in resize function and not sure why is calculated as a global or why it was defined twice
-    // the second one being set and never being used and resize was using the first instance that doesn't use Math.min
     var ratio = appWidth / appHeight;
-    // ratio = Math.min(window.innerWidth / app.stage.height, window.innerHeight / app.stage.width);
 
     if (window.innerWidth / window.innerHeight >= ratio) {
         var w = window.innerHeight * ratio;
@@ -546,7 +637,12 @@ function resize() {
     };
 
 }
-// Taken from https://github.com/kittykatattack/learningPixi#textureatlas
+/**
+ * keyboard
+ * Modified from code that appears in the PIXI tutorial.
+ * https://github.com/kittykatattack/learningPixi#textureatlas
+ * @param keyCode
+ */
 function keyboard(keyCode) {
     let key = {};
     key.code = keyCode;
@@ -583,9 +679,13 @@ function keyboard(keyCode) {
     );
     return key;
 }
-// When touch screen button is pressed, set the opacity of the button to 40% to give
-// feedback to the user that they are pressing one of the navigation keys and 
-// moving the player in a direction
+/**
+ * onButtonDown
+ * When touch screen button is pressed, set the opacity of the button to 40% to give
+ * feedback to the user that they are pressing one of the navigation keys and 
+ * moving the player in a direction
+ * this is tied to the button that was pressed that initiated the function call
+ */
 function onButtonDown() {
     this.alpha = 0.4;
     switch (this) {
@@ -610,7 +710,11 @@ function onButtonDown() {
             player.vy = 0;
     }
 }
-// When touch screen button is released, set opacity to 0
+/**
+ * onButtonUp
+ * When touch screen button is released, set opacity of that
+ * button to 0
+ */
 function onButtonUp() {
     this.alpha = 0;
     renderer.render(app.stage);
@@ -621,6 +725,15 @@ function onButtonUp() {
 // Don't need to have distinction, but most desktop roguelikes have the two seperate
 // stairs buttons for up or down so I figured I should too for desktop controls.
 // If no key is passed in, function just uses whatever tile at player's position
+/**
+ * useStairs
+ * Called whenever the user presses the 'Use Stairs' button or pressed the button
+ * on the keyboard that corresponds to the stairs up or stairs down. Function will
+ * request the floor above or below from the sever based on the tile the player is
+ * standing on. While waiting for the server to respond, a 'Loading' screen will be
+ * loaded. keyPressed should be '>' if a '.' was pressed and a '<' if a ',' is pressed.
+ * @param keyPressed The key on the keyboard the use pressed. Null when use presses the button.
+ */
 function useStairs(keyPressed) {
     // TODO: prevent player from moving after request for new floor is send. Maybe switch
     // to a loading screen until new floor arrives.
@@ -640,10 +753,23 @@ function useStairs(keyPressed) {
     }
 }
 
+/**
+ * save
+ * Sends a request to the server to save the game. Called when the user presses the 'Save'
+ * button. Should not be needed since the server saves a user's game whenever the client
+ * disconnects, but good to allow the user a way to manually save.
+ */
 function save() {
     socket.emit('request', 'save');
 }
 
+/**
+ * screenWithText
+ * Clears the screen and displays a static message in the middle of the screen. Used
+ * for error and loading screens.
+ * @param text Text that will appear in the middle of the PIXI application window 
+ * @param color Specifies the sprite sheet to be used when drawing the text. Blue and orange only colors enabled right now
+ */
 function screenWithText(text, color) {
     clearApp();
     drawText(text, appWidth/2 - (text.length/2) * fontSize, (appHeight - fontHeight)/2, color);
@@ -651,9 +777,22 @@ function screenWithText(text, color) {
     renderer.render(app.stage);
 }
 
+/**
+ * error
+ * Error game state. State used for loading and error screens to prevent player input at times when player
+ * input would cause errors.
+ * @param delta
+ * @returns {undefined}
+ */
 function error(delta) {
 }
 
+/**
+ * clearApp
+ * Deletes all the tiles on the screen and removes the player sprite. This is used
+ * whenever the map needs to update when the player changes levels or whenever a new
+ * screen needs to be created.
+ */
 function clearApp() {
     if (gameTiles) {
         gameTiles.destroy({children:true, texture:false, baseTexture:false});
@@ -666,6 +805,15 @@ function clearApp() {
     
 }
 
+/**
+ * getLocalStorageSaves
+ * Socket.IO uses cookies so to keep track of games players start on their device, the
+ * browser local storage is used. Saves are in the format 'name:uuid' where the name is
+ * the name players entered at the start of their new game and the uuid is the saveID
+ * their game is associated with in the server's save database. Uses a series of helper
+ * functions to allow the number of saves to be a customizable number.
+ * @returns An array starting at 1 of all the local saves
+ */
 function getLocalStorageSaves() {
     if (checkStorageCompatibility()) {
         var saves = {};
@@ -678,17 +826,30 @@ function getLocalStorageSaves() {
     return null;
 }
 
+/**
+ * getLocalStorageSaveObject
+ * Returns the save in the specified save slot. Save objects are in the format 'name:uuid'
+ * where name is the name the player entered at the start of that session and uuid is the
+ * save ID that is associated with their game in the server's database.
+ * @param slot The save slot to be loaded. Can be between 1 and the maximum save count.
+ * @returns The save in local storage at the specified spot. Object has a name and saveID field.
+ */
 function getLocalStorageSaveObject(slot) {
     var storage = localStorage.getItem('save'+slot);
     var saveObject = storage ? storage.split(':') : ['',''];
     return {name: saveObject[0], saveID: saveObject[1]};
 }
 
+/**
+ * setLocalStorageSaves
+ * When a player starts a new game or loads a previous game, the save is added to slot 1 in
+ * the saves kept in the client's browser's local storage. All other games are shifted down.
+ * @param name The name the player entered at the start of a new game
+ * @param saveID The uuid that's unique to every game that's used as an identifier in the server's save database
+ * @returns Returns true if a save was successfully added, false if the save was unable to be added to local storage.
+ */
 function setLocalStorageSaves(name, saveID) {
     if (checkStorageCompatibility()) {
-        // TODO: Currently whenever a player is loaded, the data for the play in the next slot will be cloned
-        // Example: Saves named 1) Dennis 2) Griffin 3) James 4) Alex 5) Tracey. If Dennis is loaded, Griffin
-        // will take up slots 2 and 3. If James is loaded, Alex would take up 4 and 5
         var saveInfo = name+':'+saveID;
         removeDuplicateStorageHelper(1, saveInfo);
         addSaveLocalStorage(maxSaves, saveInfo);
@@ -697,11 +858,14 @@ function setLocalStorageSaves(name, saveID) {
     return false;
 }
 
-// If the player is trying to add a duplicate save, set the save in storage to null,
-// then add the save as if it were any other
-// function to add saves should get rid of empty saves by shifting the save slot below up.
-
-
+/**
+ * addSaveLocalStorage
+ * Moves all saves down one slot and then adds the most recent game to save slot 1.
+ * A recursive function that exits once the save is added to the first slot.
+ * @param slot The current slot being manipulated in local storage
+ * @param saveInfo The saveInfo in the format 'name:uuid' to add to save slot 1.
+ * @returns null once all the saves are updated.
+ */
 function addSaveLocalStorage(slot, saveInfo) {
     if (slot < 1)  return;
     if (slot === 1) { 
@@ -712,6 +876,21 @@ function addSaveLocalStorage(slot, saveInfo) {
     addSaveLocalStorage(slot-1, saveInfo);
 }
 
+/**
+ * removeDuplicateStorageHelper
+ * If a player loads a game that appears in local storage, remove that save from
+ * its old location and place it in the first save slot. Recursive function because
+ * the function needs to move all the saves up after a save is removed. The way I
+ * handle moving saves up would cause infinite loops if all save slots were not being
+ * used. The counter increments whenever the function tries to remove empty save slots
+ * and if the counter is ever greater than the (max saves) - (current save slot) then
+ * we know that the current slot is the last save on the local machine so the recursive
+ * calls end.
+ * @param slot The current save slot being manipulated.
+ * @param saveInfo The info being saved and to be removed from the old save list. In the format 'name:uuid'.
+ * @param counter Number of times the recursive function has been called for current save slot
+ * @returns true once recursive calls end. Until then, the function returns itself. If a duplicate is removed, call the function again from the same save slot. If no save is removed, call the function from the next slot.
+ */
 function removeDuplicateStorageHelper(slot, saveInfo, counter) {
     if (!counter) { counter=0; }
     if (slot > maxSaves) { return true; }
@@ -724,6 +903,14 @@ function removeDuplicateStorageHelper(slot, saveInfo, counter) {
     return removeDuplicateStorageHelper(slot+1, saveInfo, 0);
 }
 
+/**
+ * moveLocalStorageSave
+ * Helper function used to move saves from one save slot in the browser's local storage
+ * to another spot.
+ * @param from Location to move data from. Corresponds to the save slot number.
+ * @param to Location to set to the value in the from location. Corresponds to the save slot number.
+ * @returns true if the saves can be moved, false if to or from is less than 1 or greater than the max number of saves.
+ */
 function moveLocalStorageSave(from, to) {
     if (from < 1 || from > maxSaves || to < 1 || from > maxSaves) return false;
     localStorage.setItem('save'+to, localStorage.getItem('save'+from));
@@ -731,6 +918,13 @@ function moveLocalStorageSave(from, to) {
     return true;
 }
 
+/**
+ * checkStorageCompatibility
+ * Checks to see if the client's browser supports using local storage. If not, player will
+ * have to keep track of their saves themselves. If the browser does support local storage,
+ * then players can have their browser store their recently played games.
+ * @returns true if the client's browser supporses local storage, false if the browser does not.
+ */
 function checkStorageCompatibility() {
     if (typeof(Storage) !== 'undefined') {
         return true;
