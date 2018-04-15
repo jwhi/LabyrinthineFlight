@@ -118,8 +118,10 @@ class Floor {
         this.playerY = null;
         this.levelNumber = levelNumber;
         this.playerName = name;
+        this.enemies = [];
         this.mapExplored = {};
-        var digger = new ROT.Map.Digger(this.width,this.height);;
+        var digger = new ROT.Map.Digger(this.width,this.height);
+
         var digCallback = function(x,y, value) {
             var key = x + "," + y;
             if (value) { this.map[key] = " ";}
@@ -184,6 +186,20 @@ class Floor {
         }
         this.playerX = this.rooms[roomID].getCenter()[0];
         this.playerY = this.rooms[roomID].getCenter()[1];
+
+        // Initiate Enemies and Dijkstra path-finding passed function
+        this.placeEnemies();
+        this.dijkstra = new ROT.Path.Dijkstra(this.playerX, this.playerY, function (x, y) {
+            if (this.map) {
+                console.log('true');
+                return ((this.map[x+','+y] === '.') || (this.map[x+','+y] === ',') || (this.map[x+','+y] === '-') || (this.map[x+','+y] === '+'))
+            } else {
+                return false;
+            }
+        }); 
+
+
+        
     }
     updateFOV(pX, pY) {
         var localMap = this.map;
@@ -212,6 +228,19 @@ class Floor {
                 }
                 this.mapExplored[i+","+j] = tileAlpha;
             }
+        }
+        if (this.enemies.length > 0) {
+            this.dijkstra = new ROT.Path.Dijkstra(this.playerX, this.playerY, function (x, y) {
+                if (localMap) {
+                    return ((localMap[x+','+y] === '.') || (localMap[x+','+y] === ',') || (localMap[x+','+y] === '-') || (localMap[x+','+y] === '+'))
+                } else {
+                    return false;
+                }
+            }, { topology: 4 }); 
+            this.dijkstra.compute(this.enemies[0].x, this.enemies[0].y, function(x, y) {
+                // For testing, have the alpha of all the tiles in the enemies path should have the alpha value of 1.
+                localMapExplored[x+','+y] = 1;
+            });
         }
         return this.mapExplored;
     }
@@ -271,7 +300,7 @@ class Floor {
         enemyY = enemyStartRoom.getCenter()[1];
         attempts++;
         } while (this.inRoom(enemyX, enemyY) == this.inRoom(this.playerX, this.playerY) && attempts < 3);
-        this.enemies[enemyX+","+enemyY] = new Enemy('goblin');
+        this.enemies.push(new Enemy('goblin', enemyX, enemyY));
     }
     getEnemies() {
         return this.enemies;
@@ -353,8 +382,10 @@ class Floor {
 }
 
 class Enemy {
-    constructor(name) {
+    constructor(name, x, y) {
         this.name = name;
+        this.x = x;
+        this.y = y;
         this.health = 0;
         this.attack = 0;
         this.accuracy = 0;

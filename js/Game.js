@@ -34,7 +34,7 @@ var uuid;
 
 // Map sprites stores all the map sprites currently drawn on the screen
 // Map alpha stores the opacity for each individual tile that handles the FOV effect
-var mapSprites = [], mapAlpha = [];
+var mapSprites = [], mapAlpha = [], enemySprites = [];
 
 
 // Aliases
@@ -332,6 +332,14 @@ function setup() {
         for (let y = 0; y < mapHeight; y++) {
             for (let x = 0; x < mapWidth; x++) {
                 mapSprites[x+','+y] = placeTile(tileNames[x+','+y], x * tileSize, y * tileSize);
+            }
+        }
+
+        if (level) {
+            for (let i = 0; i < level.enemies.length; i++) {
+                currentEnemy = level.enemies[i];
+                enemySprites[i] = placeTile(currentEnemy.name, currentEnemy.x * tileSize, currentEnemy.y * tileSize);
+                enemySprites[i].alpha = 1;
             }
         }
         app.stage.addChild(gameTiles);
