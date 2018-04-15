@@ -37,7 +37,7 @@ io.on('connection', function(socket) {
                 $y: dungeon.getCurrentFloor().playerY,
                 $currentFloor: dungeon.floorNumber,
                 $maxFloor: dungeon.floors.length - 1,
-                $map: JSON.stringify(dungeon.getCurrentFloor().map),
+                $map: JSON.stringify(dungeon.getCurrentFloor()),
                 $alpha: JSON.stringify(dungeon.mapAlphaValues())
             });
         }
@@ -61,7 +61,7 @@ io.on('connection', function(socket) {
                     $seed: seed,
                     $currentFloor: dungeon.floorNumber,
                     $maxFloor: dungeon.floors.length - 1,
-                    $map: JSON.stringify(dungeon.getCurrentFloor().map),
+                    $map: JSON.stringify(dungeon.getCurrentFloor()),
                     $alpha: JSON.stringify(dungeon.mapAlphaValues())
         });
         socket.emit('playerInfo', {name: playerName, saveID: uuid});
@@ -77,7 +77,8 @@ io.on('connection', function(socket) {
                 playerName = row.name;
                 seed = row.seed;
                 dungeon = new Rogue.Dungeon(playerName, seed, row.currentFloor, row.maxFloor);
-                dungeon.getCurrentFloor().map = JSON.parse(row.map);
+                dungeon.getCurrentFloor().map = JSON.parse(row.map).map;
+                dungeon.getCurrentFloor().enemies = JSON.parse(row.map).enemies;
                 dungeon.setAlphaValues(JSON.parse(row.alpha));
                 dungeon.getCurrentFloor().playerX = row.x;
                 dungeon.getCurrentFloor().playerY = row.y;
@@ -117,7 +118,7 @@ io.on('connection', function(socket) {
                         $y: dungeon.getCurrentFloor().playerY,
                         $currentFloor: dungeon.floorNumber,
                         $maxFloor: dungeon.floors.length - 1,
-                        $map: JSON.stringify(dungeon.getCurrentFloor().map),
+                        $map: JSON.stringify(dungeon.getCurrentFloor()),
                         $alpha: JSON.stringify(dungeon.mapAlphaValues())
                     });
                 }
