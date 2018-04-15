@@ -225,6 +225,8 @@ class Floor {
                     tileAlpha = previouslyExploredAlpha;
                 } else if (tileAlpha == 2) {
                     tileAlpha = 1;
+                } else if (tileAlpha != previouslyExploredAlpha){
+                    tileAlpha = 0;
                 }
                 this.mapExplored[i+","+j] = tileAlpha;
             }
@@ -239,7 +241,7 @@ class Floor {
             }, { topology: 4 }); 
             this.dijkstra.compute(this.enemies[0].x, this.enemies[0].y, function(x, y) {
                 // For testing, have the alpha of all the tiles in the enemies path should have the alpha value of 1.
-                localMapExplored[x+','+y] = 1;
+                localMapExplored[x+','+y] = previouslyExploredAlpha/2;
             });
         }
         return this.mapExplored;
