@@ -1,31 +1,29 @@
 "use strict";
-const ROT = require("rot-js");
-/*
-const XMLHttpRequest = require("xmlhttprequest").XMLHttpRequest;
+const ROT = require('rot-js');
 
+/*
+
+String generator.
+
+const fs = require('fs');
 
 var sg = new ROT.StringGenerator();
-var xhr = new XMLHttpRequest();
 
-xhr.open("get", "nicknames.txt", true);
-console.log(xhr);
-xhr.send();
-
-xhr.onreadystatechange = function() {
-    if (xhr.readyState != 4) { return; }
-
-    var lines = xhr.responseText.split("\n");
+fs.readFile('nicknames.txt', function(err, data) {
+    data = data.toString();
+    var lines = data.split("\n");
     while(lines.length) {
         var line = lines.pop().trim();
         if (!line) { continue; }
         sg.observe(line);
     }
-}
-
-for (var i = 0; i < 20; i++) {
-    console.log("Name: " + sg.generate());
-}
+    
+    for (var i = 0; i < 20; i++) {
+        console.log("Name: " + sg.generate());
+    }
+});
 */
+
 const mapWidth = 30;
 const mapHeight = 30;
 
@@ -83,9 +81,9 @@ class Dungeon {
 
     /** mapAlphaValues
      * 
-     * @param {*} x - Player's X 
-     * @param {*} y - Player's Y
-     * Returns an array of alpha values to be used on the map of the tiles
+     * @param x Player's X 
+     * @param y Player's Y
+     * @returns an array of alpha values to be used on the map of the tiles
      * Tiles seen by the player = 1
      * Tiles the player hasn't seen = 0
      * Tiles previously seen but not currently in FOV is a value between 0 and 1.
