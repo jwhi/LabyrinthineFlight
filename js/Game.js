@@ -278,8 +278,11 @@ function setup() {
             promptStr = 'Enter the UUID to load:';
         }
         var loadID = prompt(promptStr, '');
-        if (loadID == null || loadID == '') {
-            screenWithText("Error: Unable to load game.");
+        console.log('LoadID: ');
+        console.log(loadID);
+        if (!loadID || loadID == '') {
+                newGame = true;
+                dialogValue = -1;    
         } else {
             if (loadID <= maxSaves && loadID >= 1) {
                 newGame = false;
@@ -408,7 +411,17 @@ function setup() {
     });
     
     if (newGame) {
-        socket.emit('new game', dialogValue);
+        if (dialogValue === -1) {
+            dialogValue = defaultName;
+            screenWithText("No save entered. Starting a new game...");
+            setTimeout(function () {
+                console.log('after 3 seconds.');
+                socket.emit('new game', dialogValue);
+            }, 3000);
+            console.log('other code');
+        } else {
+            socket.emit('new game', dialogValue);
+        }  
     } else {
 
         socket.emit('load game', dialogValue);
