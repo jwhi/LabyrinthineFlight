@@ -335,7 +335,6 @@ function setup() {
             for (let i = 0; i < level.enemies.length; i++) {
                 currentEnemy = level.enemies[i];
                 enemySprites[i] = placeTile(currentEnemy.name, currentEnemy.x * tileSize, currentEnemy.y * tileSize);
-                enemySprites[i].alpha = 1;
             }
         }
         app.stage.addChild(gameTiles);
@@ -346,6 +345,16 @@ function setup() {
     // Server handles are the FOV calculation. Received after every time a player makes a successful movement on the map.
     // Server lag will lead the FOV not following the player and trailing behind.
     socket.on('worldTurn', function(worldTurnData) {
+        if(worldTurnData.fov) {
+            for (var j = 0; j < mapHeight; j++) {
+                for (var i = 0; i < mapWidth; i++) {
+                    var t = mapSprites[i+','+j];
+                    if (t) {
+                        t.alpha = worldTurnData.fov[i+','+j];
+                    }
+                }
+            }
+        }
         if (worldTurnData.enemies && level) {
             level.enemies = worldTurnData.enemies;
             for (let i = 0; i < level.enemies.length; i++) {
@@ -355,16 +364,13 @@ function setup() {
                     if (currentEnemy.health <= 0) {
                         enemySprites[i].texture = mapTiles['corpse'];
                     }
-                }
-            }
-        }
-        if(worldTurnData.fov) {
-            for (var j = 0; j < mapHeight; j++) {
-                for (var i = 0; i < mapWidth; i++) {
-                    var t = mapSprites[i+','+j];
-                    if (t) {
-                        t.alpha = worldTurnData.fov[i+','+j];
+                    if (mapSprites[currentEnemy.x+','+currentEnemy.y].alpha == 1) {
+                        enemySprites[i].alpha = 1;
+                    } else {
+                        enemySprites[i].alpha = 0;
                     }
+                } else {
+                    enemySprites[i].alpha = mapSprites[currentEnemy.x+','+currentEnemy.y].alpha;
                 }
             }
         }
@@ -545,7 +551,7 @@ function placeTile(tileName, x, y) {
     }
     if (tile) {
         tile.position.set(x, y);
-        tile.alpha = defaultAlpha;
+        tile.alpha = 0;
         gameTiles.addChild(tile);
     }
     return tile;
