@@ -333,7 +333,11 @@ function setup() {
         if (level) {
             for (let i = 0; i < level.enemies.length; i++) {
                 currentEnemy = level.enemies[i];
-                enemySprites[i] = placeTile(currentEnemy.name, currentEnemy.x * tileSize, currentEnemy.y * tileSize);
+                if (currentEnemy.health > 0) {
+                    enemySprites[i] = placeTile(currentEnemy.name, currentEnemy.x * tileSize, currentEnemy.y * tileSize);
+                } else {
+                    enemySprites[i] = placeTile('corpse', currentEnemy.x * tileSize, currentEnemy.y * tileSize);
+                }
             }
         }
         app.stage.addChild(gameTiles);
@@ -530,9 +534,7 @@ function updateMap() {
     player.vy = 0;
     
     socket.emit('request', 'tileNames');
-
-    socket.emit('playerTurn', '');
-    
+    socket.emit('playerTurn', {x: getPlayerX(), y: getPlayerY()});
     return true;
 }
 
