@@ -13,7 +13,6 @@
         "rot-js": "^0.6.5",
         "socket.io": "^2.0.4",
         "sqlite3": "^4.0.0",
-        "uuid": "^3.2.1",
-        "xmlhttprequest": "^1.8.0"
+        "uuid": "^3.2.1"
     }
 }
