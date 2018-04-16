@@ -330,7 +330,6 @@ function setup() {
                 mapSprites[x+','+y] = placeTile(tileNames[x+','+y], x * tileSize, y * tileSize);
             }
         }
-
         if (level) {
             for (let i = 0; i < level.enemies.length; i++) {
                 currentEnemy = level.enemies[i];
@@ -374,6 +373,14 @@ function setup() {
                 }
             }
         }
+        if (worldTurnData.map && level) {
+            Object.keys(worldTurnData.map).forEach(function(key) {
+                level.map[key] = worldTurnData.map[key];
+                if (level.map[key] == '-') {
+                    mapSprites[key].texture = openDoorTexture;
+                }
+            });
+        }
         renderer.render(app.stage);
     });
     // If the player disconnects from the server, happens often if playing on a phone and the user locks their screen, the server will no
@@ -396,9 +403,6 @@ function setup() {
         }
     });
     
-
-
-
     if (newGame) {
         socket.emit('new game', dialogValue);
     } else {

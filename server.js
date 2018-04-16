@@ -118,6 +118,7 @@ io.on('connection', function(socket) {
         // TODO: Player's turn will consist of player's position, items used, enemy attacked, any object interactions on the map (trap, books, etc.)
         // TODO: World turn will calculate and send any buffs to the player that continue next player turn, enemy damage/attacks/movement, world updates that happen in response to player or enemy (enemies opening doors, setting off traps, secret passages opening), and the new FOV for the player
         if (dungeon) {
+            var updatedMapTiles = {};
             if (playerTurnData.x && playerTurnData.y) {
                 dungeon.getCurrentFloor().setPlayerPosition(playerTurnData.x, playerTurnData.y);
                 dungeon.getCurrentFloor().enemies.forEach(function(element) {
@@ -136,10 +137,18 @@ io.on('connection', function(socket) {
                             element.y = playerTurnData.y;
                             element.health = 0;
                         }
+                        if (dungeon.getCurrentFloor().map[element.x+','+element.y] == '+') {
+                            dungeon.getCurrentFloor().map[element.x+','+element.y] = '-';
+                            updatedMapTiles[element.x+','+element.y] = '-';
+                        }
                     }
                 });
             }
-            socket.emit('worldTurn', {enemies: dungeon.getCurrentFloor().enemies, fov: dungeon.mapAlphaValues()});
+            if (Object.keys(updatedMapTiles).length > 0) {
+                socket.emit('worldTurn', {enemies: dungeon.getCurrentFloor().enemies, fov: dungeon.mapAlphaValues(), map: updatedMapTiles});
+            } else {
+                socket.emit('worldTurn', {enemies: dungeon.getCurrentFloor().enemies, fov: dungeon.mapAlphaValues()});
+            }
         } else {
             socket.emit('missing', 'no dungeon');        
         }
