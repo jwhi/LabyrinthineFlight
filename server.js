@@ -27,20 +27,23 @@ io.on('connection', function(socket) {
     var playerName;
     var dungeon;
     var seed;
+
+    function save() {
+        // Save the player's info
+        if (dungeon && uuid) {
+            db.run(`UPDATE saves SET playerData = $playerData, mapData = $mapData WHERE uuid = $uuid;`, {
+                $uuid: uuid,
+                $playerData: JSON.stringify({name: playerName, x: dungeon.getCurrentFloor().playerX, y: dungeon.getCurrentFloor().playerY}),
+                $mapData: JSON.stringify({seed: seed, currentFloor: dungeon.floorNumber, maxFloor: dungeon.floors.length - 1, map: dungeon.getCurrentFloor().map, fov: dungeon.mapAlphaValues(), enemies: dungeon.getCurrentFloor().enemies})
+            });
+        }
+        socket.emit('debug','save succesful');
+    }
+
     socket.on('disconnect', function() {
         console.log('user disconnected.');
         // Save the player's info
-        if (dungeon && uuid) {
-            db.run(`UPDATE saves SET x = $x, y = $y, currentFloor = $currentFloor, maxFloor = $maxFloor, map = $map, alpha = $alpha WHERE uuid = $uuid;`, {
-                $uuid: uuid,
-                $x: dungeon.getCurrentFloor().playerX,
-                $y: dungeon.getCurrentFloor().playerY,
-                $currentFloor: dungeon.floorNumber,
-                $maxFloor: dungeon.floors.length - 1,
-                $map: JSON.stringify(dungeon.getCurrentFloor()),
-                $alpha: JSON.stringify(dungeon.mapAlphaValues())
-            });
-        }
+        save();
     });
     socket.on('new game', function(name) {
         uuid = uuidv4();
@@ -52,17 +55,12 @@ io.on('connection', function(socket) {
         seed = Math.floor(Math.random() * Math.floor(Number.MAX_SAFE_INTEGER - 1000000));
         dungeon = new Rogue.Dungeon(playerName, seed);
         socket.emit('dungeon', dungeon.getCurrentFloor());
-        //  create table saves(uuid text primary key, name text, x integer, y integer, seed integer, currentFloor integer, maxFloor integer, map text, alpha text);
-        db.run(`INSERT INTO saves VALUES ($uuid, $name, $x, $y, $seed, $currentFloor, $maxFloor, $map, $alpha)`, {
+        //  create table saves(uuid text primary key, playerData text, mapData text);
+        
+        db.run(`INSERT INTO saves VALUES ($uuid, $playerData, $mapData)`, {
                     $uuid: uuid,
-                    $name: playerName,
-                    $x: dungeon.getCurrentFloor().playerX,
-                    $y: dungeon.getCurrentFloor().playerY,
-                    $seed: seed,
-                    $currentFloor: dungeon.floorNumber,
-                    $maxFloor: dungeon.floors.length - 1,
-                    $map: JSON.stringify(dungeon.getCurrentFloor()),
-                    $alpha: JSON.stringify(dungeon.mapAlphaValues())
+                    $playerData: JSON.stringify({name: playerName, x: dungeon.getCurrentFloor().playerX, y: dungeon.getCurrentFloor().playerY}),
+                    $mapData: JSON.stringify({seed: seed, currentFloor: dungeon.floorNumber, maxFloor: dungeon.floors.length - 1, map: dungeon.getCurrentFloor().map, fov: dungeon.mapAlphaValues(), enemies: dungeon.getCurrentFloor().enemies})
         });
         socket.emit('playerInfo', {name: playerName, saveID: uuid});
     });
@@ -73,15 +71,17 @@ io.on('connection', function(socket) {
                 if (err) { console.error(err.message); return; }
                 socket.emit('missing','load');
             } else {
+                var playerData = JSON.parse(row.playerData);
+                var mapData = JSON.parse(row.mapData);
                 uuid = loadID;
-                playerName = row.name;
-                seed = row.seed;
-                dungeon = new Rogue.Dungeon(playerName, seed, row.currentFloor, row.maxFloor);
-                dungeon.getCurrentFloor().map = JSON.parse(row.map).map;
-                dungeon.getCurrentFloor().enemies = JSON.parse(row.map).enemies;
-                dungeon.setAlphaValues(JSON.parse(row.alpha));
-                dungeon.getCurrentFloor().playerX = row.x;
-                dungeon.getCurrentFloor().playerY = row.y;
+                playerName = playerData.name;
+                seed = mapData.seed;
+                dungeon = new Rogue.Dungeon(playerName, seed, mapData.currentFloor, mapData.maxFloor);
+                dungeon.getCurrentFloor().map = mapData.map;
+                dungeon.getCurrentFloor().enemies = mapData.enemies;
+                dungeon.setAlphaValues(mapData.fov);
+                dungeon.getCurrentFloor().playerX = playerData.x;
+                dungeon.getCurrentFloor().playerY = playerData.y;
                 socket.emit('dungeon', dungeon.getCurrentFloor());
                 socket.emit('playerInfo', {name: playerName, saveID: uuid});
             }
@@ -110,19 +110,7 @@ io.on('connection', function(socket) {
                     socket.emit('missing', 'name');
                 }
             case 'save':
-                // Save the player's info
-                if (dungeon && uuid) {
-                    db.run(`UPDATE saves SET x = $x, y = $y, currentFloor = $currentFloor, maxFloor = $maxFloor, map = $map, alpha = $alpha WHERE uuid = $uuid;`, {
-                        $uuid: uuid,
-                        $x: dungeon.getCurrentFloor().playerX,
-                        $y: dungeon.getCurrentFloor().playerY,
-                        $currentFloor: dungeon.floorNumber,
-                        $maxFloor: dungeon.floors.length - 1,
-                        $map: JSON.stringify(dungeon.getCurrentFloor()),
-                        $alpha: JSON.stringify(dungeon.mapAlphaValues())
-                    });
-                }
-                socket.emit('debug','save succesful');
+                save();
                 break;
             default:
                 console.log('Bad request.\n' + data);
