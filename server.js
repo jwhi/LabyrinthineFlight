@@ -53,7 +53,7 @@ io.on('connection', function(socket) {
         // has plenty of floors before they hit max int. Just needs to be a check
         // but this is quick and planning on just being the implementation during testing.
         seed = Math.floor(Math.random() * Math.floor(Number.MAX_SAFE_INTEGER - 1000000));
-        dungeon = new Rogue.Dungeon(playerName, seed);
+        dungeon = new Rogue.Dungeon(seed);
         socket.emit('dungeon', dungeon.getCurrentFloor());
         //  create table saves(uuid text primary key, playerData text, mapData text);
         
@@ -76,7 +76,7 @@ io.on('connection', function(socket) {
                 uuid = loadID;
                 playerName = playerData.name;
                 seed = mapData.seed;
-                dungeon = new Rogue.Dungeon(playerName, seed, mapData.currentFloor, mapData.maxFloor);
+                dungeon = new Rogue.Dungeon(seed, mapData.currentFloor, mapData.maxFloor);
                 dungeon.getCurrentFloor().map = mapData.map;
                 dungeon.getCurrentFloor().enemies = mapData.enemies;
                 dungeon.setAlphaValues(mapData.fov);

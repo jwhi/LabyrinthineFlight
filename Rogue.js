@@ -31,7 +31,7 @@ const playerFOVRadius = 8;
 const previouslyExploredAlpha = 0.4;
 
 class Dungeon {
-    constructor(name, seed, floorNumber, furthestFloor) {
+    constructor(seed, floorNumber, furthestFloor) {
         if (floorNumber) {
             this.floorNumber = floorNumber;
         } else {
@@ -45,8 +45,7 @@ class Dungeon {
         this.floors = [];
         this.seed = seed;
         ROT.RNG.setSeed(this.seed + this.floorNumber);
-        this.playerName = name;
-        this.floors[this.floorNumber] = new Floor(this.playerName, mapWidth, mapHeight, this.floorNumber);
+        this.floors[this.floorNumber] = new Floor(mapWidth, mapHeight, this.floorNumber);
     }
     gotoFloor(floorNumber, upOrDown) {
         if (floorNumber < 0) return;
@@ -54,7 +53,7 @@ class Dungeon {
             // New level that needs to be created and stored.
             // RNG for ROT set to initial seed + floorNumber
             ROT.RNG.setSeed(this.seed + floorNumber);
-            this.floors[floorNumber] = new Floor(this. playerName, mapWidth, mapHeight, floorNumber, upOrDown === 'down');
+            this.floors[floorNumber] = new Floor(mapWidth, mapHeight, floorNumber, upOrDown === 'down');
         }
         this.floorNumber = floorNumber;
     }
@@ -110,14 +109,13 @@ class Dungeon {
 }
 
 class Floor {
-    constructor(name, width, height, levelNumber, spawnOnDownStairs) {
+    constructor(width, height, levelNumber, spawnOnDownStairs) {
         this.map = {};
         this.width = width;
         this.height = height;
         this.playerX = null;
         this.playerY = null;
         this.levelNumber = levelNumber;
-        this.playerName = name;
         this.enemies = [];
         this.mapExplored = {};
         var digger = new ROT.Map.Digger(this.width,this.height);
