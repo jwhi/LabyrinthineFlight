@@ -92,9 +92,6 @@ io.on('connection', function(socket) {
             case 'tileNames':
                 socket.emit('tileNames', dungeon.getCurrentFloor().generateTileNames());
                 break;
-            case 'mapAlphaValues':
-                socket.emit('mapAlphaValues', dungeon.mapAlphaValues());
-                break;
             case 'floor down':
                 dungeon.gotoFloor(dungeon.floorNumber + 1, "up");
                 socket.emit('dungeon', dungeon.getCurrentFloor());
@@ -109,6 +106,7 @@ io.on('connection', function(socket) {
                 } else {
                     socket.emit('missing', 'name');
                 }
+                break;
             case 'save':
                 save();
                 break;
@@ -116,12 +114,16 @@ io.on('connection', function(socket) {
                 console.log('Bad request.\n' + data);
         }
     });
-    socket.on('move', function(positions) {
+    socket.on('playerTurn', function(playerTurnData) {
+        // TODO: Player's turn will consist of player's position, items used, enemy attacked, any object interactions on the map (trap, books, etc.)
+        // TODO: World turn will calculate and send any buffs to the player that continue next player turn, enemy damage/attacks/movement, world updates that happen in response to player or enemy (enemies opening doors, setting off traps, secret passages opening), and the new FOV for the player
         if (dungeon) {
-            dungeon.getCurrentFloor().setPlayerPosition(positions[0], positions[1]);
-            socket.emit('mapAlphaValues', dungeon.mapAlphaValues());
+            if (playerTurnData.x && playerTurnData.y) {
+                dungeon.getCurrentFloor().setPlayerPosition(playerTurnData.x, playerTurnData.y);
+            }
+            socket.emit('worldTurn', {fov: dungeon.mapAlphaValues()});
         } else {
-            socket.emit('missing', 'no dungeon');
+            socket.emit('missing', 'no dungeon');        
         }
     });
 });

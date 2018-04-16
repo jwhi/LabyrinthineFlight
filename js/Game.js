@@ -349,12 +349,12 @@ function setup() {
     });
     // Server handles are the FOV calculation. Received after every time a player makes a successful movement on the map.
     // Server lag will lead the FOV not following the player and trailing behind.
-    socket.on('mapAlphaValues', function(mapAlpha) {
+    socket.on('worldTurn', function(worldTurnData) {
         for (var j = 0; j < mapHeight; j++) {
             for (var i = 0; i < mapWidth; i++) {
                 var t = mapSprites[i+','+j];
                 if (t) {
-                    t.alpha = mapAlpha[i+','+j];
+                    t.alpha = worldTurnData.fov[i+','+j];
                 }
             }
         }
@@ -447,7 +447,7 @@ function play(delta) {
             player.y = player_y * tileSize;
             // Player has moved. Update the server and move the player on the map.
             // FOV is still calculated server side so that will lag behind a little.
-            socket.emit('move', [player_x, player_y]);
+            socket.emit('playerTurn', {x: player_x, y: player_y});
             if (level.map[player_x+','+player_y] === '+') {
                 level.map[player_x+','+player_y] = '-';
                 mapSprites[player_x+','+player_y].texture = openDoorTexture;
@@ -510,7 +510,7 @@ function updateMap() {
     
     socket.emit('request', 'tileNames');
 
-    socket.emit('request', 'mapAlphaValues');
+    socket.emit('playerTurn', '');
     
     return true;
 }
