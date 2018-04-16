@@ -120,8 +120,26 @@ io.on('connection', function(socket) {
         if (dungeon) {
             if (playerTurnData.x && playerTurnData.y) {
                 dungeon.getCurrentFloor().setPlayerPosition(playerTurnData.x, playerTurnData.y);
+                dungeon.getCurrentFloor().enemies.forEach(function(element) {
+                    if (element.health > 0) {
+                        enemy = new Rogue.Enemy(element.name, element.x, element.y);
+                        element.path = enemy.calculateMove(playerTurnData.x, playerTurnData.y, dungeon.getCurrentFloor().map);
+                        var moveTo = element.path.shift();
+                        if (moveTo) {
+                            element.x = moveTo.x;
+                            element.y = moveTo.y;
+                            if(element.x == playerTurnData.x && element.y == playerTurnData.y) {
+                                element.health = 0;
+                            }
+                        } else {
+                            element.x = playerTurnData.x;
+                            element.y = playerTurnData.y;
+                            element.health = 0;
+                        }
+                    }
+                });
             }
-            socket.emit('worldTurn', {fov: dungeon.mapAlphaValues()});
+            socket.emit('worldTurn', {enemies: dungeon.getCurrentFloor().enemies, fov: dungeon.mapAlphaValues()});
         } else {
             socket.emit('missing', 'no dungeon');        
         }

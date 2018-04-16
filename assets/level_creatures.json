@@ -264,7 +264,7 @@
 	"spriteSourceSize": {"x":0,"y":0,"w":64,"h":64},
 	"sourceSize": {"w":64,"h":64}
 },
-"monster 8":
+"corpse":
 {
 	"frame": {"x":331,"y":265,"w":64,"h":64},
 	"rotated": false,

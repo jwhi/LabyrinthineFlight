@@ -189,7 +189,6 @@ class Floor {
         this.placeEnemies();
         this.dijkstra = new ROT.Path.Dijkstra(this.playerX, this.playerY, function (x, y) {
             if (this.map) {
-                console.log('true');
                 return ((this.map[x+','+y] === '.') || (this.map[x+','+y] === ',') || (this.map[x+','+y] === '-') || (this.map[x+','+y] === '+'))
             } else {
                 return false;
@@ -228,19 +227,6 @@ class Floor {
                 }
                 this.mapExplored[i+","+j] = tileAlpha;
             }
-        }
-        if (this.enemies.length > 0) {
-            this.dijkstra = new ROT.Path.Dijkstra(this.playerX, this.playerY, function (x, y) {
-                if (localMap) {
-                    return ((localMap[x+','+y] === '.') || (localMap[x+','+y] === ',') || (localMap[x+','+y] === '-') || (localMap[x+','+y] === '+'))
-                } else {
-                    return false;
-                }
-            }, { topology: 4 }); 
-            this.dijkstra.compute(this.enemies[0].x, this.enemies[0].y, function(x, y) {
-                // For testing, have the alpha of all the tiles in the enemies path should have the alpha value of 1.
-                localMapExplored[x+','+y] = previouslyExploredAlpha/2;
-            });
         }
         return this.mapExplored;
     }
@@ -392,6 +378,7 @@ class Enemy {
         this.char = "";
         this.loot = [];
         this.description = "";
+        this.path = [];
         
         switch (name) {
             case 'goblin':
@@ -403,6 +390,23 @@ class Enemy {
                 break;
         }
     }
+    calculateMove(playerX, playerY, map) {
+        var dijkstra = new ROT.Path.Dijkstra(playerX, playerY, function (x, y) {
+            if (map) {
+                return ((map[x+','+y] === '.') || (map[x+','+y] === ',') || (map[x+','+y] === '-') || (map[x+','+y] === '+'))
+            } else {
+                return false;
+            }
+        }, { topology: 4 });
+        var localPath = this.path; 
+        dijkstra.compute(this.x, this.y, function(x, y) {
+            // For testing, have the alpha of all the tiles in the enemies path should have the alpha value of 1.
+            localPath.push({x:x, y:y});
+        });
+        // Remove the first spot in path because it contains the enemy's current location. We want the first spot to be where the enemy's next turn should be.
+        this.path.shift();
+        return this.path;
+    }
 }
 
-module.exports = { Dungeon, Floor};
+module.exports = { Dungeon, Floor, Enemy};

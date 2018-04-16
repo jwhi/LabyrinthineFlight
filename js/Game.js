@@ -104,10 +104,6 @@ PIXI.loader
     .load(setup);
 
 
-
-
-
-
 /**
  * setup
  * Called after PIXI loads assets. Once assets are loaded, begin adding on-screen controls and listening
@@ -350,11 +346,25 @@ function setup() {
     // Server handles are the FOV calculation. Received after every time a player makes a successful movement on the map.
     // Server lag will lead the FOV not following the player and trailing behind.
     socket.on('worldTurn', function(worldTurnData) {
-        for (var j = 0; j < mapHeight; j++) {
-            for (var i = 0; i < mapWidth; i++) {
-                var t = mapSprites[i+','+j];
-                if (t) {
-                    t.alpha = worldTurnData.fov[i+','+j];
+        if (worldTurnData.enemies && level) {
+            level.enemies = worldTurnData.enemies;
+            for (let i = 0; i < level.enemies.length; i++) {
+                currentEnemy = level.enemies[i];
+                if (enemySprites[i].texture != mapTiles['corpse']) {
+                        enemySprites[i].position.set(currentEnemy.x * tileSize, currentEnemy.y * tileSize);
+                    if (currentEnemy.health <= 0) {
+                        enemySprites[i].texture = mapTiles['corpse'];
+                    }
+                }
+            }
+        }
+        if(worldTurnData.fov) {
+            for (var j = 0; j < mapHeight; j++) {
+                for (var i = 0; i < mapWidth; i++) {
+                    var t = mapSprites[i+','+j];
+                    if (t) {
+                        t.alpha = worldTurnData.fov[i+','+j];
+                    }
                 }
             }
         }
@@ -447,6 +457,7 @@ function play(delta) {
             player.y = player_y * tileSize;
             // Player has moved. Update the server and move the player on the map.
             // FOV is still calculated server side so that will lag behind a little.
+            // If a player attacks an enemy, disable player movement until client receive world's turn from server
             socket.emit('playerTurn', {x: player_x, y: player_y});
             if (level.map[player_x+','+player_y] === '+') {
                 level.map[player_x+','+player_y] = '-';
