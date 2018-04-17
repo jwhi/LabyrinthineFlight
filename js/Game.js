@@ -75,6 +75,12 @@ var state = null;
 // Stores the player texture and can be used to make sure the map stored in rogue
 // has the same player position that is displayed on the screen.
 var player;
+
+// These variables allow players to hold down buttons to help navigate the map faster
+var xDirectionHeld = 0, yDirectionHeld = 0;
+var directionKeyHeld = '';
+var timeoutFunction;
+
 // Stores the PIXI loader for all the map textures, except for open doors which I
 // patched in on the go and haven't had the chance to merge it into the spritesheet.
 var mapTiles, openDoorTexture;
@@ -117,6 +123,7 @@ function setup() {
     // Buttons are shown when pressed to allow the player to see the boundary of the button
     // and give some feedback that input has been received.
     // If not mobile, listen for keyboard events.
+
     if (isMobile) {
         buttonUp = new PIXI.Graphics();
         buttonUp.beginFill(0x404040);
@@ -197,48 +204,36 @@ function setup() {
 
         //Left arrow key `press` method
         left.press = () => {
-            player.vx = -1;
-            player.vy = 0;
+            directionPressed('L');
         };
 
         //Left arrow key `release` method
         left.release = () => {
-            if (!right.isDown && player.vy === 0) {
-                player.vx = 0;
-            }
+            directionReleased();
         };
 
         //Up
         up.press = () => {
-            player.vy = -1;
-            player.vx = 0;
+            directionPressed('U');
         };
         up.release = () => {
-            if (!down.isDown && player.vx === 0) {
-                player.vy = 0;
-            }
+            directionReleased();
         };
 
         //Right
         right.press = () => {
-            player.vx = 1;
-            player.vy = 0;
+            directionPressed('R');
         };
         right.release = () => {
-            if (!left.isDown && player.vy === 0) {
-                player.vx = 0;
-            }
+            directionReleased();
         };
 
         //Down
         down.press = () => {
-            player.vy = 1;
-            player.vx = 0;
+            directionPressed('D');
         };
         down.release = () => {
-            if (!up.isDown && player.vx === 0) {
-                player.vy = 0;
-            }
+            directionReleased();
         };
 
         period.press = () => {
@@ -278,8 +273,6 @@ function setup() {
             promptStr = 'Enter the UUID to load:';
         }
         var loadID = prompt(promptStr, '');
-        console.log('LoadID: ');
-        console.log(loadID);
         if (!loadID || loadID == '') {
                 newGame = true;
                 dialogValue = -1;    
@@ -415,10 +408,8 @@ function setup() {
             dialogValue = defaultName;
             screenWithText("No save entered. Starting a new game...");
             setTimeout(function () {
-                console.log('after 3 seconds.');
                 socket.emit('new game', dialogValue);
             }, 3000);
-            console.log('other code');
         } else {
             socket.emit('new game', dialogValue);
         }  
@@ -503,6 +494,19 @@ function play(delta) {
             // movement, but this is to update the player's client that the player
             // has moved, but server might take a second to update their FOV
             renderer.render(app.stage);
+        }
+
+        // TODO: Clean the held down key checks.
+        if (directionKeyHeld) {
+            xDirectionHeld = player.vx;
+            yDirectionHeld = player.vy;
+            timeoutFunction = setTimeout(function () {
+                player.vx = xDirectionHeld;
+                player.vy = yDirectionHeld; 
+                xDirectionHeld = 0;
+                yDirectionHeld = 0;
+            
+            }, 170);
         }
         player.vx = 0;
         player.vy = 0;
@@ -734,24 +738,19 @@ function onButtonDown() {
     this.alpha = 0.4;
     switch (this) {
         case buttonUp:
-            player.vy = -1;
-            player.vx = 0;
+            directionPressed('U');
             break;
         case buttonDown:
-            player.vy = 1;
-            player.vx = 0;
+        directionPressed('D');
             break;
         case buttonRight:
-            player.vx = 1;
-            player.vy = 0;
+        directionPressed('R');
             break;
         case buttonLeft:
-            player.vx = -1;
-            player.vy = 0;
+            directionPressed('L');
             break;
         default:
-            player.vx = 0;
-            player.vy = 0;
+            directionReleased();
     }
 }
 /**
@@ -761,6 +760,7 @@ function onButtonDown() {
  */
 function onButtonUp() {
     this.alpha = 0;
+    directionReleased();
     renderer.render(app.stage);
 }
 
@@ -975,4 +975,40 @@ function checkStorageCompatibility() {
     } else {
         return false;
     }
+}
+
+// The directionPressed and directionReleased functions handle clearing the timeout function
+// which allows players hold down a direction instead of having to press the key every time they want to move
+function directionReleased() {
+    clearTimeout(timeoutFunction);
+    directionKeyHeld = '';
+    player.vx = 0;
+    player.vy = 0;
+}
+function directionPressed(direction) {
+    clearTimeout(timeoutFunction);
+    if (direction != directionKeyHeld) {
+        directionKeyHeld = direction;
+        switch (direction) {
+            case 'U':
+                player.vy = -1;
+                player.vx = 0;
+                break;
+            case 'D':
+                player.vy = 1;
+                player.vx = 0;
+                break;
+            case 'L':
+                player.vx = -1;
+                player.vy = 0;
+                break;
+            case 'R':
+                player.vx = 1;
+                player.vy = 0;
+                break;
+            default:
+                directionReleased();
+                break;
+        }
+        }
 }
