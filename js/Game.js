@@ -76,6 +76,8 @@ var state = null;
 // has the same player position that is displayed on the screen.
 var player;
 
+var menuInput, menuScreen = 'main';
+
 // These variables allow players to hold down buttons to help navigate the map faster
 var xDirectionHeld = 0, yDirectionHeld = 0;
 var directionKeyHeld = '';
@@ -245,7 +247,10 @@ function setup() {
         };
     }
 
+
+
     // The game uses JS alert windows until a proper main menu can be programmed.
+    /*
     tileSets = confirm('Press OK to use the classic tiles.\nPress Cancel to use new tiles.');
     var newGame;
     var dialogValue = '';
@@ -286,6 +291,8 @@ function setup() {
             }
         }
     }
+    */
+
 
     socket = io();
     // Sockets handled by Socket.io
@@ -403,6 +410,9 @@ function setup() {
         }
     });
     
+
+
+    /*
     if (newGame) {
         if (dialogValue === -1) {
             dialogValue = defaultName;
@@ -417,6 +427,9 @@ function setup() {
 
         socket.emit('load game', dialogValue);
     }
+
+    */
+
     // Start the game loop by adding the `gameLoop` function to
     // Pixi's `ticker` and providing it with a 'delta' argument
     app.ticker.add(delta=>gameLoop(delta));
@@ -437,6 +450,17 @@ function setup() {
     document.getElementById('addedControls').innerHTML += '<button class="button" onclick="save();">Save</button>';    
     // Resize the game window to the browser window so player does not need to scroll
     // to see the entire game board or find where the player is on the screen.
+
+    updateMenu();
+    state = menu;
+}
+
+function switchGraphics() {
+    tileSets = !tileSets;
+    var levelTilesPack = 'level' + (tileSets ? '' : '_new');
+    var doorTilePack = 'assets/openDoor' + (tileSets ? '' : '_new') + '.png';
+    mapTiles = resources[levelTilesPack].textures;
+    openDoorTexture =  PIXI.Texture.fromImage(doorTilePack);
 }
 
 /**
@@ -453,6 +477,239 @@ function gameLoop(delta) {
         state(delta);
 }
 
+function updateMenu() {
+    if (!menuScreen || menuScreen == 'main') {
+        clearApp();
+        var text = 'Labyrinthine Flight'
+        var textXLocation = (appWidth - (text.length * fontSize))/2;
+        drawText(text, textXLocation, (appHeight/2) - (fontHeight*18), 'blue');
+
+        menuInput = new Sprite(mapTiles['player']);
+        menuInput.position.set(textXLocation, (appHeight/2) - (fontHeight*16));
+        menuInput.vx = 0;
+        menuInput.vy = 0;
+        gameTiles.addChild(menuInput);
+        textXLocation += tileSize;
+
+        drawText('New Game', textXLocation, (appHeight/2) - (fontHeight*15), 'orange');
+        drawText('Load Game', textXLocation, (appHeight/2) - (fontHeight*13), 'orange');
+        drawText('Graphics', textXLocation, (appHeight/2) - (fontHeight*11), 'orange');
+        drawText('Help', textXLocation, (appHeight/2) - (fontHeight*9), 'orange');
+    } else if (menuScreen == 'load') {
+        clearApp();
+        var text = 'Load Game'
+        var textXLocation = (appWidth - (text.length * fontSize))/2;
+        var textYMultiplier = 18;
+        drawText(text, textXLocation, (appHeight/2) - (fontHeight*textYMultiplier), 'blue');
+        textYMultiplier -= 2;
+        menuInput = new Sprite(mapTiles['player']);
+        menuInput.vx = 0;
+        menuInput.vy = 0;
+        
+        var saves = getLocalStorageSaves();
+        if (saves[1].saveID) {
+            text = saves[1].name + ' : ' + saves[1].saveID;
+            textXLocation = (appWidth - (text.length * fontSize))/2;
+            menuInput.position.set(textXLocation, (appHeight/2) - (fontHeight*textYMultiplier));
+            textXLocation += tileSize;
+            textYMultiplier -= 1;
+            drawText(text, textXLocation, (appHeight/2) - (fontHeight*textYMultiplier), 'orange');
+            
+
+            for (var i = 2; i <= maxSaves; i++) {
+                if (saves[i].saveID) {
+                    textYMultiplier-= 2;
+                    drawText(saves[i].name + ' : ' + saves[i].saveID, textXLocation, (appHeight/2) - (fontHeight*textYMultiplier), 'orange');
+                }
+            }
+            textYMultiplier-= 2;
+            drawText('Open Load Dialog', textXLocation, (appHeight/2) - (fontHeight*textYMultiplier), 'orange');
+            textYMultiplier-= 2;
+            drawText('Back', textXLocation, (appHeight/2) - (fontHeight*textYMultiplier), 'orange');
+
+        } else {
+            textYMultiplier-= 1;
+            drawText('Open Load Dialog', textXLocation, (appHeight/2) - (fontHeight*textYMultiplier), 'orange');
+            textYMultiplier-= 2;
+            drawText('Back', textXLocation, (appHeight/2) - (fontHeight*textYMultiplier), 'orange');
+        }
+        
+        gameTiles.addChild(menuInput);
+        /*
+        // If the player has saves stored on their local machine, display them in the load window.
+        // Player can enter the full save ID or enter the number associated with a save slot.
+        var promptStr = '';
+        var saves = getLocalStorageSaves();
+        if (saves[1].saveID) {
+            promptStr = 'Enter the UUID to load or the number next to a previously played game.\n';
+            for (var i = 1; i <= maxSaves; i++) {
+                if (saves[i].saveID) {
+                    promptStr += i + ') ' + saves[i].name + ' : ' + saves[i].saveID + '\n';
+                }
+            }
+        } else {
+            promptStr = 'Enter the UUID to load:';
+        }
+        var loadID = prompt(promptStr, '');
+        if (!loadID || loadID == '') {
+                newGame = true;
+                dialogValue = -1;    
+        } else {
+            if (loadID <= maxSaves && loadID >= 1) {
+                newGame = false;
+                dialogValue = saves[loadID].saveID;
+            } else {
+                newGame = false;
+                dialogValue = loadID;
+            }
+        }
+
+
+        */
+
+    }
+    
+    app.stage.addChild(gameTiles);
+    renderer.render(app.stage);
+}
+
+function menu(delta) {
+    if (menuInput.vx != 0 || menuInput.vy != 0) {
+        if (menuScreen == 'main') {
+            if (menuInput.vy > 0) {
+                menuInput.y += fontHeight*2;
+                if (menuInput.y > 640) {
+                    menuInput.y = 448;
+                }
+            } else if(menuInput.vy < 0) {
+                menuInput.y -= fontHeight*2;
+                if (menuInput.y < 448) {
+                    menuInput.y = 640;
+                }
+            }
+
+            if (menuInput.vx > 0) {
+                switch(menuInput.y) {
+                    case 448:
+                        // New Game
+                        socket.emit('new game', defaultName);
+                        break;
+                    case 512:
+                        // Load Game
+                        menuScreen = 'load';
+                        updateMenu();
+                        break;
+                    case 576:
+                        // Graphics
+                        switchGraphics();
+                        updateMenu();
+                        break;
+                    case 640:
+                        // Help
+                        break;
+                    default:
+                        console.log(menuInput.y);
+                        break;
+                }
+            }
+        } else if (menuScreen == 'load') {
+            var saves = getLocalStorageSaves();
+            if (menuInput.vy > 0) {
+                menuInput.y += fontHeight*2;
+                if (menuInput.y > (448 + (Object.keys(saves).length+1)*64)) {
+                    menuInput.y = 448;
+                }
+            } else if(menuInput.vy < 0) {
+                menuInput.y -= fontHeight*2;
+                if (menuInput.y < 448) {
+                    menuInput.y = (448 + (Object.keys(saves).length+1)*64);
+                }
+            }
+            if (menuInput.vx > 0) {
+                switch(menuInput.y) {
+                    case 448:
+                        // Save 1
+                        if (saves[1].saveID) {
+                            socket.emit('load game', saves[1].saveID);
+                        } else {
+                            var uuid = prompt("Enter the game's uuid: ", '');
+                            socket.emit('load game', uuid);
+                        }
+                        break;
+                    case 512:
+                        // Save 2
+                        if (saves[2].saveID) {
+                            socket.emit('load game', saves[2].saveID);
+                        } else if (saves[1].saveID) {
+                            var uuid = prompt("Enter the game's uuid: ", '');
+                            socket.emit('load game', uuid);
+                         } else {
+                            menuScreen = 'main';
+                            updateMenu();
+                        }
+                        break;
+                    case 576:
+                        // Save 3
+                        if (saves[3].saveID) {
+                            socket.emit('load game', saves[3].saveID);
+                        } else if (saves[2].saveID) {
+                            var uuid = prompt("Enter the game's uuid: ", '');
+                            socket.emit('load game', uuid);
+                         } else {
+                            menuScreen = 'main';
+                            updateMenu();
+                        }
+                        break;
+                    case 640:
+                        // Save 4
+                        if (saves[4].saveID) {
+                            socket.emit('load game', saves[4].saveID);
+                        } else if (saves[3].saveID) {
+                            var uuid = prompt("Enter the game's uuid: ", '');
+                            socket.emit('load game', uuid);
+                         } else {
+                            menuScreen = 'main';
+                            updateMenu();
+                        }
+                        break;
+                    case 704:
+                        // Save 5
+                        if (saves[5].saveID) {
+                            socket.emit('load game', saves[5].saveID);
+                        } else if (saves[4].saveID) {
+                            var uuid = prompt("Enter the game's uuid: ", '');
+                            socket.emit('load game', uuid);
+                         } else {
+                            menuScreen = 'main';
+                            updateMenu();
+                        }
+                        break;
+                    case 768:
+                        // Load from Dialog
+                        if (saves[5].saveID) {
+                            var uuid = prompt("Enter the game's uuid: ", '');
+                            socket.emit('load game', uuid);
+                         } else {
+                            menuScreen = 'main';
+                            updateMenu();
+                        }
+                        break;
+                    case 832:
+                        // Back
+                        menuScreen = 'main';
+                        updateMenu();
+                        break;
+                    default:
+                        console.log(menuInput.y);
+                        break;
+                }
+            }
+        }
+        menuInput.vx = 0;
+        menuInput.vy = 0;
+        renderer.render(app.stage);
+    }
+}
 
 /**
  * play
@@ -612,12 +869,16 @@ function drawText(str, start_x, start_y, color) {
         let x = start_x, y = start_y;
         for (let i = 0, len = str.length; i < len; i++) {
             let character, charAt = str.charAt(i);
-            if (charAt == '!') {
+            if (!isNaN(charAt)) {
+                character = charAt;
+            } else if (charAt == '!') {
                 character = '_exclamation';
             } else if (charAt == ':') {
                 character = '_colon'; 
             } else if (charAt == '.') {
                 character = '_period';
+            } else if (charAt == '-') {
+                character = '_dash';
             } else if (charAt == charAt.toLowerCase()) {
                 character = charAt + '_l';
             } else if (charAt == charAt.toUpperCase()) {
@@ -980,31 +1241,43 @@ function checkStorageCompatibility() {
 // The directionPressed and directionReleased functions handle clearing the timeout function
 // which allows players hold down a direction instead of having to press the key every time they want to move
 function directionReleased() {
+    var inputObject;
+    if (state == menu) {
+        inputObject = menuInput;
+    } else {
+        inputObject = player;
+    }
     clearTimeout(timeoutFunction);
     directionKeyHeld = '';
-    player.vx = 0;
-    player.vy = 0;
+    inputObject.vx = 0;
+    inputObject.vy = 0;
 }
 function directionPressed(direction) {
     clearTimeout(timeoutFunction);
+    var inputObject;
+    if (state == menu) {
+        inputObject = menuInput;
+    } else {
+        inputObject = player;
+    }
     if (direction != directionKeyHeld) {
         directionKeyHeld = direction;
         switch (direction) {
             case 'U':
-                player.vy = -1;
-                player.vx = 0;
+                inputObject.vy = -1;
+                inputObject.vx = 0;
                 break;
             case 'D':
-                player.vy = 1;
-                player.vx = 0;
+                inputObject.vy = 1;
+                inputObject.vx = 0;
                 break;
             case 'L':
-                player.vx = -1;
-                player.vy = 0;
+                inputObject.vx = -1;
+                inputObject.vy = 0;
                 break;
             case 'R':
-                player.vx = 1;
-                player.vy = 0;
+                inputObject.vx = 1;
+                inputObject.vy = 0;
                 break;
             default:
                 directionReleased();
