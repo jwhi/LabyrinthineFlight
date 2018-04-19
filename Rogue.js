@@ -118,7 +118,8 @@ class Floor {
         this.levelNumber = levelNumber;
         this.enemies = [];
         this.mapExplored = {};
-        var digger = new ROT.Map.Digger(this.width,this.height);
+        var digger = new ROT.Map.Digger(width, height, {roomWidth:[3,7], roomHeight:[3,7], corridorLength:[2,4], dugPercentage:0.24});
+        //new ROT.Map.Uniform(width, height, {roomWidth: [3,6], roomHeight: [3,6], roomDugPercentage: 0.5});
 
         var digCallback = function(x,y, value) {
             var key = x + "," + y;
