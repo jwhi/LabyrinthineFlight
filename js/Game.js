@@ -482,8 +482,6 @@ function updateMenu() {
         drawText('Load Game', textXLocation, textYLocation, 'orange');
         textYLocation += fontHeight*1.5;
         drawText('Graphics', textXLocation, textYLocation, 'orange');
-        textYLocation += fontHeight*1.5;
-        drawText('Help', textXLocation, textYLocation, 'orange');
     } else if (menuScreen == 'load') {
         clearApp();
         var text = 'Load Game'
@@ -524,13 +522,13 @@ function menu(delta) {
         if (menuScreen == 'main') {
             if (menuInput.vy > 0) {
                 menuInput.y += fontHeight*1.5;
-                if (menuInput.y > 832) {
+                if (menuInput.y > 736) {
                     menuInput.y = 544;
                 }
             } else if(menuInput.vy < 0) {
                 menuInput.y -= fontHeight*1.5;
                 if (menuInput.y < 544) {
-                    menuInput.y = 832;
+                    menuInput.y = 736;
                 }
             }
 
