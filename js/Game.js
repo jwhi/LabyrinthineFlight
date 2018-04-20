@@ -3,8 +3,8 @@
 const tileSize = 64;
 
 // Width and height in pixels of the textures used for fonts
-const fontSize =  24;
-const fontHeight = 32;
+const fontSize =  48;
+const fontHeight = 64;
 
 // Should add spaces between lines being drawn to the screen using drawText that contains new line characters
 // Currently does not work
@@ -350,7 +350,7 @@ function setup() {
         gameTiles.addChild(player);
         drawText(playerName + ' ' + playerTitle, 0, 0);
         var str = 'Dungeon Level: ' + (level.levelNumber + 1);
-        drawText(str, appWidth - str.length * fontSize, 0);
+        drawText(str, 0, appHeight - fontSize*2);
         state = play;
     });
     // Server handles are the FOV calculation. Received after every time a player makes a successful movement on the map.
@@ -468,60 +468,49 @@ function updateMenu() {
         clearApp();
         var text = 'Labyrinthine Flight'
         var textXLocation = (appWidth - (text.length * fontSize))/2;
-        drawText(text, textXLocation, (appHeight/2) - (fontHeight*18), 'blue');
+        drawText(text, textXLocation, (appHeight/2) - (fontHeight*9), 'blue');
 
         menuInput = new Sprite(mapTiles['player']);
-        menuInput.position.set(textXLocation, (appHeight/2) - (fontHeight*16));
+        var textYLocation =  (appHeight/2) - (fontHeight*7 - 32) ;
+        menuInput.position.set(textXLocation, textYLocation);
         menuInput.vx = 0;
         menuInput.vy = 0;
         gameTiles.addChild(menuInput);
         textXLocation += tileSize;
-
-        drawText('New Game', textXLocation, (appHeight/2) - (fontHeight*15), 'orange');
-        drawText('Load Game', textXLocation, (appHeight/2) - (fontHeight*13), 'orange');
-        drawText('Graphics', textXLocation, (appHeight/2) - (fontHeight*11), 'orange');
-        drawText('Help', textXLocation, (appHeight/2) - (fontHeight*9), 'orange');
+        drawText('New Game', textXLocation, textYLocation, 'orange');
+        textYLocation += fontHeight*1.5;
+        drawText('Load Game', textXLocation, textYLocation, 'orange');
+        textYLocation += fontHeight*1.5;
+        drawText('Graphics', textXLocation, textYLocation, 'orange');
+        textYLocation += fontHeight*1.5;
+        drawText('Help', textXLocation, textYLocation, 'orange');
     } else if (menuScreen == 'load') {
         clearApp();
         var text = 'Load Game'
-        var textXLocation = (appWidth - (text.length * fontSize))/2;
-        var textYMultiplier = 18;
-        drawText(text, textXLocation, (appHeight/2) - (fontHeight*textYMultiplier), 'blue');
-        textYMultiplier -= 2;
+        var textXLocation = (appWidth/2 - (text.length * fontSize)/2);
+        drawText(text, textXLocation, (appHeight/2) - (fontHeight*9), 'blue');
         menuInput = new Sprite(mapTiles['player']);
         menuInput.vx = 0;
         menuInput.vy = 0;
-        
+        textXLocation = (appWidth/2 - (text.length * fontSize))/2;
+        var textYLocation =  (appHeight/2) - (fontHeight*8 - 32) ;
+        menuInput.position.set(textXLocation, textYLocation + fontHeight*1.5);
+        textXLocation += tileSize;
         var saves = getLocalStorageSaves();
-        if (saves[1].saveID) {
-            text = saves[1].name + ' : ' + saves[1].saveID;
-            textXLocation = (appWidth - (text.length * fontSize))/2;
-            menuInput.position.set(textXLocation, (appHeight/2) - (fontHeight*textYMultiplier));
-            textXLocation += tileSize;
-            textYMultiplier -= 1;
-            drawText(text, textXLocation, (appHeight/2) - (fontHeight*textYMultiplier), 'orange');
-        } else {
-            text = 'No data in save slot 1'
-            textXLocation = (appWidth - (text.length * fontSize))/2;
-            menuInput.position.set(textXLocation, (appHeight/2) - (fontHeight*textYMultiplier));
-            textXLocation += tileSize;
-            textYMultiplier -= 1;
-            drawText(text, textXLocation, (appHeight/2) - (fontHeight*textYMultiplier), 'orange');
-        }
-            
-        for (var i = 2; i <= maxSaves; i++) {
-            textYMultiplier-= 2;
+        
+        for (var i = 1; i <= maxSaves; i++) {
+            textYLocation += fontHeight*1.5;
             if (saves[i].saveID) {
-                drawText(saves[i].name + ' : ' + saves[i].saveID, textXLocation, (appHeight/2) - (fontHeight*textYMultiplier), 'orange');
+                drawText(saves[i].name + ' : ' + saves[i].saveID, textXLocation, textYLocation, 'orange');
             } else {
-                drawText('No data in save slot ' + i, textXLocation, (appHeight/2) - (fontHeight*textYMultiplier), 'orange');
+                drawText('No data in save slot ' + i, textXLocation, textYLocation, 'orange');
             
             }
         }
-        textYMultiplier-= 2;
-        drawText('Open Load Dialog', textXLocation, (appHeight/2) - (fontHeight*textYMultiplier), 'orange');
-        textYMultiplier-= 2;
-        drawText('Back', textXLocation, (appHeight/2) - (fontHeight*textYMultiplier), 'orange');
+        textYLocation += fontHeight*1.5;
+        drawText('Open Load Dialog', textXLocation, textYLocation, 'orange');
+        textYLocation += fontHeight*1.5;
+        drawText('Back', textXLocation, textYLocation, 'orange');
         
         gameTiles.addChild(menuInput);
     }
@@ -534,54 +523,57 @@ function menu(delta) {
     if (menuInput.vx != 0 || menuInput.vy != 0) {
         if (menuScreen == 'main') {
             if (menuInput.vy > 0) {
-                menuInput.y += fontHeight*2;
-                if (menuInput.y > 640) {
-                    menuInput.y = 448;
+                menuInput.y += fontHeight*1.5;
+                if (menuInput.y > 832) {
+                    menuInput.y = 544;
                 }
             } else if(menuInput.vy < 0) {
-                menuInput.y -= fontHeight*2;
-                if (menuInput.y < 448) {
-                    menuInput.y = 640;
+                menuInput.y -= fontHeight*1.5;
+                if (menuInput.y < 544) {
+                    menuInput.y = 832;
                 }
             }
 
             if (menuInput.vx > 0) {
                 switch(menuInput.y) {
-                    case 448:
+                    case 544:
                         // New Game
                         socket.emit('new game', defaultName);
                         break;
-                    case 512:
+                    case 640:
                         // Load Game
                         menuScreen = 'load';
                         updateMenu();
                         break;
-                    case 576:
+                    case 736:
                         // Graphics
                         switchGraphics();
                         updateMenu();
                         break;
-                    case 640:
+                    case 832:
                         // Help
                         break;
                     default:
                         console.log(menuInput.y);
                         break;
                 }
+            } else if (menuInput.vx < 0) {
+                console.log(menuInput.y);
             }
         } else if (menuScreen == 'load') {
             var saves = getLocalStorageSaves();
             if (menuInput.vy > 0) {
-                menuInput.y += fontHeight*2;
-                if (menuInput.y > (448 + (Object.keys(saves).length+1)*64)) {
-                    menuInput.y = 448;
+                menuInput.y += fontHeight*1.5;
+                if (menuInput.y > 1152) {
+                    menuInput.y = 576;
                 }
             } else if(menuInput.vy < 0) {
-                menuInput.y -= fontHeight*2;
-                if (menuInput.y < 448) {
-                    menuInput.y = (448 + (Object.keys(saves).length+1)*64);
+                menuInput.y -= fontHeight*1.5;
+                if (menuInput.y < 576) {
+                    menuInput.y = 1152;
                 }
             }
+            
             if (menuInput.vx < 0) {
                 menuScreen = 'main';
                 updateMenu();
@@ -590,42 +582,42 @@ function menu(delta) {
                     // TODO: Can be reduced. Instead of doing things this way, going to create menu objects
                     // Also instead of checking each x in a switch, will just use Object.keys(saves).length+1)*64
                     // to find which menu object the user is looking at.
-                    case 448:
+                    case 576:
                         // Save 1
                         if (saves[1].saveID) {
                             socket.emit('load game', saves[1].saveID);
                         }
                         break;
-                    case 512:
+                    case 672:
                         // Save 2
                         if (saves[2].saveID) {
                             socket.emit('load game', saves[2].saveID);
                         }
                         break;
-                    case 576:
+                    case 768:
                         // Save 3
                         if (saves[3].saveID) {
                             socket.emit('load game', saves[3].saveID);
                         }
                         break;
-                    case 640:
+                    case 864:
                         // Save 4
                         if (saves[4].saveID) {
                             socket.emit('load game', saves[4].saveID);
                         }
                         break;
-                    case 704:
+                    case 960:
                         // Save 5
                         if (saves[5].saveID) {
                             socket.emit('load game', saves[5].saveID);
                         }
                         break;
-                    case 768:
+                    case 1056:
                         // Load from Dialog
                         var uuid = prompt("Enter the game's uuid: ", '');
                         socket.emit('load game', uuid);
                         break;
-                    case 832:
+                    case 1152:
                         // Back
                         menuScreen = 'main';
                         updateMenu();
@@ -817,6 +809,7 @@ function drawText(str, start_x, start_y, color) {
             }
 
             let sprite = new Sprite(font[character + '.png']);
+            sprite.scale.set(2);
             sprite.position.set(x, y);
             gameTiles.addChild(sprite);
             x += fontSize;
