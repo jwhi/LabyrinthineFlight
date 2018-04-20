@@ -28,6 +28,7 @@ var tileSets = false;
 
 // Stores the player's name after a new game is started or a game is loaded from the server
 var playerName = '';
+var playerTitle = '';
 
 // Stores the game's save ID. Received from the server after a new game begins or a game is loaded from the server.
 var uuid;
@@ -320,6 +321,7 @@ function setup() {
     // user to load this game again in the future.
     socket.on('playerInfo', function(playerInfo) {
             playerName = playerInfo.name;
+            playerTitle = playerInfo.title;
             uuid = playerInfo.saveID;
             document.getElementById('saveID').innerHTML = '<h1>' + uuid + '</h1>';
             setLocalStorageSaves(playerName, uuid);
@@ -343,9 +345,12 @@ function setup() {
                 }
             }
         }
+
         app.stage.addChild(gameTiles);
         gameTiles.addChild(player);
-        document.getElementById('gameInfo').innerHTML = '<h1 style="float: left">Player Name: ' + playerName + '</h1><h1 style="float: right">Dungeon Level: ' + (level.levelNumber + 1) + '</h1>';
+        drawText(playerName + ' ' + playerTitle, 0, 0);
+        var str = 'Dungeon Level: ' + (level.levelNumber + 1);
+        drawText(str, appWidth - str.length * fontSize, 0);
         state = play;
     });
     // Server handles are the FOV calculation. Received after every time a player makes a successful movement on the map.
@@ -410,25 +415,6 @@ function setup() {
         }
     });
     
-
-
-    /*
-    if (newGame) {
-        if (dialogValue === -1) {
-            dialogValue = defaultName;
-            screenWithText("No save entered. Starting a new game...");
-            setTimeout(function () {
-                socket.emit('new game', dialogValue);
-            }, 3000);
-        } else {
-            socket.emit('new game', dialogValue);
-        }  
-    } else {
-
-        socket.emit('load game', dialogValue);
-    }
-
-    */
 
     // Start the game loop by adding the `gameLoop` function to
     // Pixi's `ticker` and providing it with a 'delta' argument
@@ -514,59 +500,30 @@ function updateMenu() {
             textXLocation += tileSize;
             textYMultiplier -= 1;
             drawText(text, textXLocation, (appHeight/2) - (fontHeight*textYMultiplier), 'orange');
-            
-
-            for (var i = 2; i <= maxSaves; i++) {
-                if (saves[i].saveID) {
-                    textYMultiplier-= 2;
-                    drawText(saves[i].name + ' : ' + saves[i].saveID, textXLocation, (appHeight/2) - (fontHeight*textYMultiplier), 'orange');
-                }
-            }
-            textYMultiplier-= 2;
-            drawText('Open Load Dialog', textXLocation, (appHeight/2) - (fontHeight*textYMultiplier), 'orange');
-            textYMultiplier-= 2;
-            drawText('Back', textXLocation, (appHeight/2) - (fontHeight*textYMultiplier), 'orange');
-
         } else {
-            textYMultiplier-= 1;
-            drawText('Open Load Dialog', textXLocation, (appHeight/2) - (fontHeight*textYMultiplier), 'orange');
-            textYMultiplier-= 2;
-            drawText('Back', textXLocation, (appHeight/2) - (fontHeight*textYMultiplier), 'orange');
+            text = 'No data in save slot 1'
+            textXLocation = (appWidth - (text.length * fontSize))/2;
+            menuInput.position.set(textXLocation, (appHeight/2) - (fontHeight*textYMultiplier));
+            textXLocation += tileSize;
+            textYMultiplier -= 1;
+            drawText(text, textXLocation, (appHeight/2) - (fontHeight*textYMultiplier), 'orange');
         }
+            
+        for (var i = 2; i <= maxSaves; i++) {
+            textYMultiplier-= 2;
+            if (saves[i].saveID) {
+                drawText(saves[i].name + ' : ' + saves[i].saveID, textXLocation, (appHeight/2) - (fontHeight*textYMultiplier), 'orange');
+            } else {
+                drawText('No data in save slot ' + i, textXLocation, (appHeight/2) - (fontHeight*textYMultiplier), 'orange');
+            
+            }
+        }
+        textYMultiplier-= 2;
+        drawText('Open Load Dialog', textXLocation, (appHeight/2) - (fontHeight*textYMultiplier), 'orange');
+        textYMultiplier-= 2;
+        drawText('Back', textXLocation, (appHeight/2) - (fontHeight*textYMultiplier), 'orange');
         
         gameTiles.addChild(menuInput);
-        /*
-        // If the player has saves stored on their local machine, display them in the load window.
-        // Player can enter the full save ID or enter the number associated with a save slot.
-        var promptStr = '';
-        var saves = getLocalStorageSaves();
-        if (saves[1].saveID) {
-            promptStr = 'Enter the UUID to load or the number next to a previously played game.\n';
-            for (var i = 1; i <= maxSaves; i++) {
-                if (saves[i].saveID) {
-                    promptStr += i + ') ' + saves[i].name + ' : ' + saves[i].saveID + '\n';
-                }
-            }
-        } else {
-            promptStr = 'Enter the UUID to load:';
-        }
-        var loadID = prompt(promptStr, '');
-        if (!loadID || loadID == '') {
-                newGame = true;
-                dialogValue = -1;    
-        } else {
-            if (loadID <= maxSaves && loadID >= 1) {
-                newGame = false;
-                dialogValue = saves[loadID].saveID;
-            } else {
-                newGame = false;
-                dialogValue = loadID;
-            }
-        }
-
-
-        */
-
     }
     
     app.stage.addChild(gameTiles);
@@ -625,74 +582,48 @@ function menu(delta) {
                     menuInput.y = (448 + (Object.keys(saves).length+1)*64);
                 }
             }
-            if (menuInput.vx > 0) {
+            if (menuInput.vx < 0) {
+                menuScreen = 'main';
+                updateMenu();
+            } else if (menuInput.vx > 0) {
                 switch(menuInput.y) {
+                    // TODO: Can be reduced. Instead of doing things this way, going to create menu objects
+                    // Also instead of checking each x in a switch, will just use Object.keys(saves).length+1)*64
+                    // to find which menu object the user is looking at.
                     case 448:
                         // Save 1
                         if (saves[1].saveID) {
                             socket.emit('load game', saves[1].saveID);
-                        } else {
-                            var uuid = prompt("Enter the game's uuid: ", '');
-                            socket.emit('load game', uuid);
                         }
                         break;
                     case 512:
                         // Save 2
                         if (saves[2].saveID) {
                             socket.emit('load game', saves[2].saveID);
-                        } else if (saves[1].saveID) {
-                            var uuid = prompt("Enter the game's uuid: ", '');
-                            socket.emit('load game', uuid);
-                         } else {
-                            menuScreen = 'main';
-                            updateMenu();
                         }
                         break;
                     case 576:
                         // Save 3
                         if (saves[3].saveID) {
                             socket.emit('load game', saves[3].saveID);
-                        } else if (saves[2].saveID) {
-                            var uuid = prompt("Enter the game's uuid: ", '');
-                            socket.emit('load game', uuid);
-                         } else {
-                            menuScreen = 'main';
-                            updateMenu();
                         }
                         break;
                     case 640:
                         // Save 4
                         if (saves[4].saveID) {
                             socket.emit('load game', saves[4].saveID);
-                        } else if (saves[3].saveID) {
-                            var uuid = prompt("Enter the game's uuid: ", '');
-                            socket.emit('load game', uuid);
-                         } else {
-                            menuScreen = 'main';
-                            updateMenu();
                         }
                         break;
                     case 704:
                         // Save 5
                         if (saves[5].saveID) {
                             socket.emit('load game', saves[5].saveID);
-                        } else if (saves[4].saveID) {
-                            var uuid = prompt("Enter the game's uuid: ", '');
-                            socket.emit('load game', uuid);
-                         } else {
-                            menuScreen = 'main';
-                            updateMenu();
                         }
                         break;
                     case 768:
                         // Load from Dialog
-                        if (saves[5].saveID) {
-                            var uuid = prompt("Enter the game's uuid: ", '');
-                            socket.emit('load game', uuid);
-                         } else {
-                            menuScreen = 'main';
-                            updateMenu();
-                        }
+                        var uuid = prompt("Enter the game's uuid: ", '');
+                        socket.emit('load game', uuid);
                         break;
                     case 832:
                         // Back

@@ -25,6 +25,7 @@ io.on('connection', function(socket) {
     console.log('a user connected');
     var uuid;
     var playerName;
+    var playerTitle;
     var dungeon;
     var seed;
 
@@ -33,7 +34,7 @@ io.on('connection', function(socket) {
         if (dungeon && uuid) {
             db.run(`UPDATE saves SET playerData = $playerData, mapData = $mapData WHERE uuid = $uuid;`, {
                 $uuid: uuid,
-                $playerData: JSON.stringify({name: playerName, x: dungeon.getCurrentFloor().playerX, y: dungeon.getCurrentFloor().playerY}),
+                $playerData: JSON.stringify({name: playerName, title: playerTitle, x: dungeon.getCurrentFloor().playerX, y: dungeon.getCurrentFloor().playerY}),
                 $mapData: JSON.stringify({seed: seed, currentFloor: dungeon.floorNumber, maxFloor: dungeon.floors.length - 1, map: dungeon.getCurrentFloor().map, fov: dungeon.mapAlphaValues(), enemies: dungeon.getCurrentFloor().enemies})
             });
         }
@@ -47,7 +48,13 @@ io.on('connection', function(socket) {
     });
     socket.on('new game', function(name) {
         uuid = uuidv4();
-        playerName = name;
+        if (!name || name == 'Prisoner') {
+            playerName = Rogue.getPlayerName();
+            playerTitle = Rogue.getPlayerTitle();
+        } else {
+            playerName = name;
+            playerTitle = Rogue.getPlayerTitle();
+        }
         // Seed for the concurrent floors is based on the initial seed.
         // Choosing a random number 1,000,000 less than max int so player
         // has plenty of floors before they hit max int. Just needs to be a check
@@ -59,10 +66,10 @@ io.on('connection', function(socket) {
         
         db.run(`INSERT INTO saves VALUES ($uuid, $playerData, $mapData)`, {
                     $uuid: uuid,
-                    $playerData: JSON.stringify({name: playerName, x: dungeon.getCurrentFloor().playerX, y: dungeon.getCurrentFloor().playerY}),
+                    $playerData: JSON.stringify({name: playerName, title: playerTitle, x: dungeon.getCurrentFloor().playerX, y: dungeon.getCurrentFloor().playerY}),
                     $mapData: JSON.stringify({seed: seed, currentFloor: dungeon.floorNumber, maxFloor: dungeon.floors.length - 1, map: dungeon.getCurrentFloor().map, fov: dungeon.mapAlphaValues(), enemies: dungeon.getCurrentFloor().enemies})
         });
-        socket.emit('playerInfo', {name: playerName, saveID: uuid});
+        socket.emit('playerInfo', {name: playerName, title: playerTitle, saveID: uuid});
     });
     socket.on('load game', function(loadID) {
         db.get(`SELECT * FROM saves WHERE uuid = $uuid;`, { $uuid: loadID },
@@ -75,6 +82,7 @@ io.on('connection', function(socket) {
                 var mapData = JSON.parse(row.mapData);
                 uuid = loadID;
                 playerName = playerData.name;
+                playerTitle = playerData.title;
                 seed = mapData.seed;
                 dungeon = new Rogue.Dungeon(seed, mapData.currentFloor, mapData.maxFloor);
                 dungeon.getCurrentFloor().map = mapData.map;
@@ -83,7 +91,7 @@ io.on('connection', function(socket) {
                 dungeon.getCurrentFloor().playerX = playerData.x;
                 dungeon.getCurrentFloor().playerY = playerData.y;
                 socket.emit('dungeon', dungeon.getCurrentFloor());
-                socket.emit('playerInfo', {name: playerName, saveID: uuid});
+                socket.emit('playerInfo', {name: playerName, title: playerTitle, saveID: uuid});
             }
         });
     });

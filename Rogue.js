@@ -1,28 +1,67 @@
 "use strict";
 const ROT = require('rot-js');
 
-/*
 
-String generator.
+
+//String generator.
 
 const fs = require('fs');
 
 var sg = new ROT.StringGenerator();
 
-fs.readFile('nicknames.txt', function(err, data) {
+var nameFile = '';
+var malePlayerNameData;
+var femalePlayerNameData;
+var adjectiveData;
+var nicknameData;
+
+
+fs.readFile('keeperrl_male_names.txt', function(err, data) {
     data = data.toString();
-    var lines = data.split("\n");
-    while(lines.length) {
-        var line = lines.pop().trim();
-        if (!line) { continue; }
-        sg.observe(line);
-    }
-    
-    for (var i = 0; i < 20; i++) {
-        console.log("Name: " + sg.generate());
-    }
+    malePlayerNameData = data.split("\n");
 });
-*/
+
+fs.readFile('keeperrl_female_names.txt', function(err, data) {
+    data = data.toString();
+    femalePlayerNameData = data.split("\n");
+});
+
+fs.readFile('adjectives.txt', function(err, data) {
+    data = data.toString();
+    adjectiveData = data.split("\n");
+});
+
+fs.readFile('nicknames.txt', function(err, data) {
+    if (err) {
+        console.error(err);
+        return;
+    }
+    data = data.toString();
+    nicknameData = data.split("\n");
+});
+
+
+
+function getPlayerName() {
+    while(!malePlayerNameData || !femalePlayerNameData) {}
+    if (Math.round(Math.random())) {
+        nameFile = 'keeperrl_male_names.txt';
+        var rnd = Math.floor(Math.random() * malePlayerNameData.length);
+        return malePlayerNameData[rnd];
+    } else {
+        var rnd = Math.floor(Math.random() * femalePlayerNameData.length);
+        return femalePlayerNameData[rnd];
+    }
+}
+
+function getPlayerTitle() {
+    while(!adjectiveData || !nicknameData) {}
+    var rnd = Math.floor(Math.random() * adjectiveData.length);
+    var adjective = adjectiveData[rnd];
+    rnd = Math.floor(Math.random() * nicknameData.length);
+    var nickname = nicknameData[rnd];
+    return ('the ' + adjective + ' ' + nickname);
+}
 
 const mapWidth = 30;
 const mapHeight = 30;
@@ -410,4 +449,4 @@ class Enemy {
     }
 }
 
-module.exports = { Dungeon, Floor, Enemy};
+module.exports = { Dungeon, Floor, Enemy, getPlayerName, getPlayerTitle };
