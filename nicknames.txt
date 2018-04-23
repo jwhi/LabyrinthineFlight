@@ -237,7 +237,6 @@ Revolutionary
 Rival
 Road Warden
 Rock Pulverizer
-Routed
 Rubbish Remover
 Runemaster
 Sabre
@@ -285,7 +284,6 @@ Tranquil
 Troll
 Trooper
 Twilight
-Twisted
 Vamp
 Vanquisher
 Veteran
