@@ -3,8 +3,8 @@
 const tileSize = 64;
 
 // Width and height in pixels of the textures used for fonts
-const fontSize =  48;
-const fontHeight = 64;
+const fontSize =  24;
+const fontHeight = 32;
 
 // Should add spaces between lines being drawn to the screen using drawText that contains new line characters
 // Currently does not work
@@ -69,6 +69,7 @@ var appWidth = mapWidth * tileSize, appHeight = mapHeight * tileSize;
 
 
 var renderer = PIXI.autoDetectRenderer(appWidth, appHeight, null);
+var infoRenderer = PIXI.autoDetectRenderer(appWidth, fontHeight * 10, null);
 
 // Stores the game state used with PIXI.js
 var state = null;
@@ -92,6 +93,8 @@ var mapTiles, openDoorTexture;
 // and redrawn easily after a player changes floors
 var gameTiles = new PIXI.Container();
 
+var infoTiles = new PIXI.Container();
+
 // Holds the socket that handles communication with the server from Socket.IO. Set in the setup function along with the socket's listening events.
 var socket;
 
@@ -102,6 +105,21 @@ let app = new Application({
     transparent: false,
     resolution: 1
 });
+
+// gameInfo is a seperate game screen that displays player's name, health, dungeon level, and any other information that might be useful to the player
+/*
+   Amelinka the Brutal Commando
+   Dungeon Level: 1
+   HP: 10   ATK: 1-2
+   "Use Stairs?"    "Save"
+ */
+let gameInfo = new Application({
+    width: appWidth,
+    height: fontHeight * 10,
+    antialias: true,
+    transparent: false,
+    resolution: 1
+})
 
 
 
@@ -348,9 +366,9 @@ function setup() {
 
         app.stage.addChild(gameTiles);
         gameTiles.addChild(player);
-        drawText(playerName + ' ' + playerTitle, 0, 0);
-        var str = 'Dungeon Level: ' + (level.levelNumber + 1);
-        drawText(str, 0, appHeight - fontSize*2);
+        //drawText(playerName + ' ' + playerTitle, 0, 0);
+        //var str = 'Dungeon Level: ' + (level.levelNumber + 1);
+        //drawText(str, 0, appHeight - fontSize*2);
         state = play;
     });
     // Server handles are the FOV calculation. Received after every time a player makes a successful movement on the map.
@@ -393,6 +411,19 @@ function setup() {
                 }
             });
         }
+        if (worldTurnData.player) {
+            infoTiles = new PIXI.Container(); 
+            drawText2X(worldTurnData.player.name + ' ' + worldTurnData.player.title, 0, 0, tileSets ? 'orange' : 'blue', infoTiles);
+            var str = 'Dungeon Level: ' + (level.levelNumber + 1);
+            drawText2X(str, 0, 2*fontHeight, 'grey', infoTiles);
+            drawText2X('HP: ', 0, 2*fontHeight*2, 'grey', infoTiles);
+            drawText2X(worldTurnData.player.health.toString(), 2*fontSize*4, 2*fontHeight*2, 'white', infoTiles);
+            drawText2X('ATK: ', 2*fontSize*8, 2*fontHeight*2, 'grey', infoTiles);
+            drawText2X(worldTurnData.player.attack[0] + '-' + worldTurnData.player.attack[1], 2*13*fontSize, 2*fontHeight*2, 'white', infoTiles);
+            gameInfo.stage.addChild(infoTiles);
+            infoRenderer.render(gameInfo.stage)
+            console.log(worldTurnData.player.attack[0]);
+        }
         renderer.render(app.stage);
     });
     // If the player disconnects from the server, happens often if playing on a phone and the user locks their screen, the server will no
@@ -422,6 +453,7 @@ function setup() {
 
     // Add the canvas that Pixi automatically created to the HTML document
     document.getElementById('gameScreen').appendChild(renderer.view);
+    document.getElementById('gameInfo').appendChild(infoRenderer.view)
 
     //screenWithText('Welcome to Labyrinthine Flight!', 'white');
     resize();
@@ -467,48 +499,48 @@ function updateMenu() {
     if (!menuScreen || menuScreen == 'main') {
         clearApp();
         var text = 'Labyrinthine Flight'
-        var textXLocation = (appWidth - (text.length * fontSize))/2;
-        drawText(text, textXLocation, (appHeight/2) - (fontHeight*9), 'blue');
+        var textXLocation = (appWidth - (text.length * 2*fontSize))/2;
+        drawText2X(text, textXLocation, (appHeight/2) - (fontHeight*18), 'blue');
 
         menuInput = new Sprite(mapTiles['player']);
-        var textYLocation =  (appHeight/2) - (fontHeight*7 - 32) ;
+        var textYLocation =  (appHeight/2) - (fontHeight*14 - 32) ;
         menuInput.position.set(textXLocation, textYLocation);
         menuInput.vx = 0;
         menuInput.vy = 0;
         gameTiles.addChild(menuInput);
         textXLocation += tileSize;
-        drawText('New Game', textXLocation, textYLocation, 'orange');
-        textYLocation += fontHeight*1.5;
-        drawText('Load Game', textXLocation, textYLocation, 'orange');
-        textYLocation += fontHeight*1.5;
-        drawText('Graphics', textXLocation, textYLocation, 'orange');
+        drawText2X('New Game', textXLocation, textYLocation, 'orange');
+        textYLocation += 2*fontHeight*1.5;
+        drawText2X('Load Game', textXLocation, textYLocation, 'orange');
+        textYLocation += 2*fontHeight*1.5;
+        drawText2X('Graphics', textXLocation, textYLocation, 'orange');
     } else if (menuScreen == 'load') {
         clearApp();
         var text = 'Load Game'
-        var textXLocation = (appWidth/2 - (text.length * fontSize)/2);
-        drawText(text, textXLocation, (appHeight/2) - (fontHeight*9), 'blue');
+        var textXLocation = (appWidth/2 - (text.length * 2*fontSize)/2);
+        drawText2X(text, textXLocation, (appHeight/2) - (fontHeight*18), 'blue');
         menuInput = new Sprite(mapTiles['player']);
         menuInput.vx = 0;
         menuInput.vy = 0;
-        textXLocation = (appWidth/2 - (text.length * fontSize))/2;
-        var textYLocation =  (appHeight/2) - (fontHeight*8 - 32) ;
-        menuInput.position.set(textXLocation, textYLocation + fontHeight*1.5);
+        textXLocation = (appWidth/2 - (text.length * 2*fontSize))/2;
+        var textYLocation =  (appHeight/2) - (fontHeight*16 - 32) ;
+        menuInput.position.set(textXLocation, textYLocation + 2*fontHeight*1.5);
         textXLocation += tileSize;
         var saves = getLocalStorageSaves();
         
         for (var i = 1; i <= maxSaves; i++) {
-            textYLocation += fontHeight*1.5;
+            textYLocation += 2*fontHeight*1.5;
             if (saves[i].saveID) {
-                drawText(saves[i].name + ' : ' + saves[i].saveID, textXLocation, textYLocation, 'orange');
+                drawText2X(saves[i].name + ' : ' + saves[i].saveID, textXLocation, textYLocation, 'orange');
             } else {
-                drawText('No data in save slot ' + i, textXLocation, textYLocation, 'orange');
+                drawText2X('No data in save slot ' + i, textXLocation, textYLocation, 'orange');
             
             }
         }
-        textYLocation += fontHeight*1.5;
-        drawText('Open Load Dialog', textXLocation, textYLocation, 'orange');
-        textYLocation += fontHeight*1.5;
-        drawText('Back', textXLocation, textYLocation, 'orange');
+        textYLocation += 2*fontHeight*1.5;
+        drawText2X('Open Load Dialog', textXLocation, textYLocation, 'orange');
+        textYLocation += 2*fontHeight*1.5;
+        drawText2X('Back', textXLocation, textYLocation, 'orange');
         
         gameTiles.addChild(menuInput);
     }
@@ -521,12 +553,12 @@ function menu(delta) {
     if (menuInput.vx != 0 || menuInput.vy != 0) {
         if (menuScreen == 'main') {
             if (menuInput.vy > 0) {
-                menuInput.y += fontHeight*1.5;
+                menuInput.y += 2*fontHeight*1.5;
                 if (menuInput.y > 736) {
                     menuInput.y = 544;
                 }
             } else if(menuInput.vy < 0) {
-                menuInput.y -= fontHeight*1.5;
+                menuInput.y -= 2*fontHeight*1.5;
                 if (menuInput.y < 544) {
                     menuInput.y = 736;
                 }
@@ -561,12 +593,12 @@ function menu(delta) {
         } else if (menuScreen == 'load') {
             var saves = getLocalStorageSaves();
             if (menuInput.vy > 0) {
-                menuInput.y += fontHeight*1.5;
+                menuInput.y += 2*fontHeight*1.5;
                 if (menuInput.y > 1152) {
                     menuInput.y = 576;
                 }
             } else if(menuInput.vy < 0) {
-                menuInput.y -= fontHeight*1.5;
+                menuInput.y -= 2*fontHeight*1.5;
                 if (menuInput.y < 576) {
                     menuInput.y = 1152;
                 }
@@ -743,7 +775,7 @@ function updateMap() {
  * @param y The Y position the tile will be drawn on the PIXI application window
  * @returns the placed tile so the tile can be assigned to a list to allow the alpha value to be updated.
  */
-function placeTile(tileName, x, y) {
+function placeTile(tileName, x, y, appContainer) {
     var tile = null;
     if (tileName == 'openDoor') {
         tile = new Sprite(openDoorTexture);
@@ -753,7 +785,11 @@ function placeTile(tileName, x, y) {
     if (tile) {
         tile.position.set(x, y);
         tile.alpha = 0;
-        gameTiles.addChild(tile);
+        if (appContainer) {
+            appContainer.addChild(tile);
+        } else {
+            gameTiles.addChild(tile);
+        }
     }
     return tile;
 }
@@ -770,7 +806,7 @@ function placeTile(tileName, x, y) {
  * @param start_y Starting y position of text based on the PIXI app coordinates
  * @param color Selects the sprite sheet of the font to be used
  */
-function drawText(str, start_x, start_y, color) {
+function drawText(str, start_x, start_y, color, appContainer) {
     if (color == null) {
         if (tileSets) {
             color = 'orange';
@@ -783,7 +819,7 @@ function drawText(str, start_x, start_y, color) {
         lines.forEach(function(line, i) {
             // TODO: figure out why lineSpacing is shifting everything down or not being used at all
             // Replace the lineSpacing with a large int value (e.g. 800) to see shift effect
-            drawText(line, start_x, (start_y + lineSpacing) + (i * fontHeight), color);
+            drawText(line, start_x, (start_y + lineSpacing) + (i * fontHeight), color, appContainer);
         });
     } else {
         font = PIXI.loader.resources['assets/' + color + '_font.json'].textures;
@@ -807,10 +843,77 @@ function drawText(str, start_x, start_y, color) {
             }
 
             let sprite = new Sprite(font[character + '.png']);
+            sprite.position.set(x, y);
+            if (appContainer) {
+                appContainer.addChild(sprite);
+            } else {
+                gameTiles.addChild(sprite);
+            }
+            x += fontSize;
+        }
+    }
+    
+}
+
+
+/**
+ * drawText2X
+ * Draws text using the font that is included with loveable rogue-like tiles.
+ * str is the string you want to draw and x and y are the starting positions for the text.
+ * Color is just limited to orange, white, grey, and blue right now. Based on the textures
+ * proved by Loveable Rogue by Surt. Orange and blue are the only ones programmed currently
+ * because that is all I needed for loading and error screens with the two graphic sets.
+ * @param str The string to be drawn to the screen. Accepts new line characters.
+ * @param start_x Starting x position of text based on the PIXI app coordinates
+ * @param start_y Starting y position of text based on the PIXI app coordinates
+ * @param color Selects the sprite sheet of the font to be used
+ */
+function drawText2X(str, start_x, start_y, color, appContainer) {
+    if (color == null) {
+        if (tileSets) {
+            color = 'orange';
+        } else {
+            color = 'blue';
+        }
+    }
+    lines = str.split('\n');
+    if (lines.length > 1) {
+        lines.forEach(function(line, i) {
+            // TODO: figure out why lineSpacing is shifting everything down or not being used at all
+            // Replace the lineSpacing with a large int value (e.g. 800) to see shift effect
+            drawText(line, start_x, (start_y + lineSpacing) + (i * 2 * fontHeight), color, appContainer);
+        });
+    } else {
+        font = PIXI.loader.resources['assets/' + color + '_font.json'].textures;
+        let x = start_x, y = start_y;
+        for (let i = 0, len = str.length; i < len; i++) {
+            let character, charAt = str.charAt(i);
+            if (!isNaN(charAt)) {
+                character = charAt;
+            } else if (charAt == '!') {
+                character = '_exclamation';
+            } else if (charAt == ':') {
+                character = '_colon'; 
+            } else if (charAt == '.') {
+                character = '_period';
+            } else if (charAt == '-') {
+                character = '_dash';
+            } else if (charAt == charAt.toLowerCase()) {
+                character = charAt + '_l';
+            } else if (charAt == charAt.toUpperCase()) {
+                character = charAt.toLowerCase() + '_u';
+            }
+
+            let sprite = new Sprite(font[character + '.png']);
+            
             sprite.scale.set(2);
             sprite.position.set(x, y);
-            gameTiles.addChild(sprite);
-            x += fontSize;
+            if (appContainer) {
+                appContainer.addChild(sprite);
+            } else {
+                gameTiles.addChild(sprite);
+            }
+            x += fontSize*2;
         }
     }
     
@@ -859,8 +962,10 @@ function resize() {
         var w = window.innerWidth;
         var h = window.innerWidth / ratio;
     }
-    renderer.view.style.width = w + 'px';
-    renderer.view.style.height = h + 'px';
+    renderer.view.style.width = w*((isMobile) ? 1 : 0.8) + 'px';
+    renderer.view.style.height = h*((isMobile) ? 1 : 0.8) + 'px';
+    infoRenderer.view.style.width = w + 'px';
+
 
     
     window.onresize = function(event) {

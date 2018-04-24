@@ -1,10 +1,5 @@
 "use strict";
 const ROT = require('rot-js');
-
-
-
-//String generator.
-
 const fs = require('fs');
 
 var sg = new ROT.StringGenerator();
@@ -81,6 +76,7 @@ class Dungeon {
         } else {
             this.furthestFloor = floorNumber;
         }
+       this.player = new Player();
         this.floors = [];
         this.seed = seed;
         ROT.RNG.setSeed(this.seed + this.floorNumber);
@@ -404,6 +400,23 @@ class Floor {
             }
         }
         return tileNames;
+    }
+}
+
+class Player {
+    constructor(name) {
+        this.name;
+        this.title;
+        this.health = 10;
+        this.attack = [1,2];
+        
+        if (name) {
+            this.name = name;
+        } else {
+            this.name = getPlayerName();
+        }
+
+        this.title = getPlayerTitle();
     }
 }
 
