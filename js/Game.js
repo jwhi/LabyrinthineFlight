@@ -380,6 +380,8 @@ function setup() {
                     var t = mapSprites[i+','+j];
                     if (t) {
                         t.alpha = worldTurnData.fov[i+','+j];
+                        // TODO: Instead of setting the sprites alpha, set the sprites tint.
+                        // This will improv visual effect of items and enemy's remains on explored tiles
                     }
                 }
             }
@@ -412,6 +414,7 @@ function setup() {
             });
         }
         if (worldTurnData.player) {
+            gameInfo.stage.removeChildren();
             infoTiles = new PIXI.Container(); 
             drawText2X(worldTurnData.player.name + ' ' + worldTurnData.player.title, 0, 0, tileSets ? 'orange' : 'blue', infoTiles);
             var str = 'Dungeon Level: ' + (level.levelNumber + 1);
@@ -422,7 +425,6 @@ function setup() {
             drawText2X(worldTurnData.player.attack[0] + '-' + worldTurnData.player.attack[1], 2*13*fontSize, 2*fontHeight*2, 'white', infoTiles);
             gameInfo.stage.addChild(infoTiles);
             infoRenderer.render(gameInfo.stage)
-            console.log(worldTurnData.player.attack[0]);
         }
         renderer.render(app.stage);
     });
