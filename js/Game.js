@@ -63,6 +63,7 @@ if(/(android|bb\d+|meego).+mobile|avantgo|bada\/|blackberry|blazer|compal|elaine
 // Variables used to store the buttons used for navigation on mobile. Needed
 // to test which button is pressed so can have the buttons appear when pressed
 var buttonUp, buttonDown, buttonLeft, buttonRight;
+var invisibleButtons = {};
 
 // Set PIXI.js application window to the width and height of the map * size of map textures in pixels.
 var appWidth = mapWidth * tileSize, appHeight = mapHeight * tileSize;
@@ -211,9 +212,6 @@ function setup() {
         app.stage.addChild(buttonRight);
         app.stage.addChild(buttonDown);
 
-        // Button that allows the player to use stairs to change floors of the dungeon
-        document.getElementById('addedControls').innerHTML = '<button class="button" id="stairsButton" onclick="useStairs();">Use Stairs</button>';
-        document.getElementById('stairsButton').style.visibility = "hidden";
     } else {
         //Capture the keyboard arrow keys
         let left = keyboard(37),
@@ -413,7 +411,7 @@ function setup() {
                 }
             });
         }
-        if (worldTurnData.player) {
+        if (worldTurnData.player && level) {
             gameInfo.stage.removeChildren();
             infoTiles = new PIXI.Container(); 
             drawText2X(worldTurnData.player.name + ' ' + worldTurnData.player.title, 0, 0, tileSets ? 'orange' : 'blue', infoTiles);
@@ -423,6 +421,18 @@ function setup() {
             drawText2X(worldTurnData.player.health.toString(), 2*fontSize*4, 2*fontHeight*2, 'white', infoTiles);
             drawText2X('ATK: ', 2*fontSize*8, 2*fontHeight*2, 'grey', infoTiles);
             drawText2X(worldTurnData.player.attack[0] + '-' + worldTurnData.player.attack[1], 2*13*fontSize, 2*fontHeight*2, 'white', infoTiles);
+            drawText2X('Save', 0, 2*fontHeight*3, tileSets ? 'orange' : 'blue', infoTiles);
+            drawInvisibleButton(0,2*fontHeight*3, 2*fontSize*4, 2*fontHeight, save);
+            infoTiles.addChild(invisibleButtons[0+','+(2*fontHeight*3)]);
+            
+            var playerTile = level.map[getPlayerX()+','+getPlayerY()];
+            if ((playerTile === '<') || (playerTile === '>')) {
+                var x = 2*fontSize*8;
+                var y = 2*fontHeight*3;
+                drawText2X('Use Stairs', x, y, tileSets ? 'orange' : 'blue', infoTiles);
+                drawInvisibleButton(x,y, 2*fontSize*10, 2*fontHeight, useStairs);
+                infoTiles.addChild(invisibleButtons[x+','+y]);
+            }
             gameInfo.stage.addChild(infoTiles);
             infoRenderer.render(gameInfo.stage)
         }
@@ -466,8 +476,6 @@ function setup() {
     var doorTilePack = 'assets/openDoor' + (tileSets ? '' : '_new') + '.png';
     mapTiles = resources[levelTilesPack].textures;
     openDoorTexture =  PIXI.Texture.fromImage(doorTilePack);
-    // Add save button
-    document.getElementById('addedControls').innerHTML += '<button class="button" onclick="save();">Save</button>';    
     // Resize the game window to the browser window so player does not need to scroll
     // to see the entire game board or find where the player is on the screen.
 
@@ -694,14 +702,6 @@ function play(delta) {
                 mapSprites[player_x+','+player_y].texture = openDoorTexture;
             }
         
-            if (isMobile) {
-                if ((level.map[player_x+','+player_y] === '<') || (level.map[player_x+','+player_y] === '>')) {
-                    document.getElementById('stairsButton').style.visibility = "visible";
-                } else {
-                    document.getElementById('stairsButton').style.visibility = "hidden";
-                }
-            }
-
             // Renderer is updated when the game receives updated FOV from player
             // movement, but this is to update the player's client that the player
             // has moved, but server might take a second to update their FOV
@@ -921,6 +921,25 @@ function drawText2X(str, start_x, start_y, color, appContainer) {
     
 }
 
+function drawInvisibleButton(x, y, width, height, pressedFunction, releasedFunction) {
+    var newButton = new PIXI.Graphics();
+    newButton.beginFill(0x404040);
+    newButton.drawPolygon([
+        x,y,
+        x,y+height,
+        x+width,y+height,
+        x+width,y
+    ]);
+    newButton.endFill();
+    newButton
+        .on('pointerdown', (event) => { if(event.target) {pressedFunction()}})
+        .on('pointerup', (event) => { if(event.target) {releasedFunction()}});
+    newButton.alpha = 0;
+    newButton.interactive = true;
+    newButton.buttonMode = true;
+    invisibleButtons[x+','+y] = newButton;
+}
+
 /**
  * getPlayerX
  * Returns the player's X value in relation to the map instead of pixels from the right
@@ -1071,6 +1090,8 @@ function onButtonUp() {
 function useStairs(keyPressed) {
     // TODO: prevent player from moving after request for new floor is send. Maybe switch
     // to a loading screen until new floor arrives.
+        console.log('stairs');
+        console.log(keyPressed);
     if (!keyPressed) {
         keyPressed = level.map[getPlayerX()+','+getPlayerY()];
     }
