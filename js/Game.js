@@ -63,7 +63,6 @@ if(/(android|bb\d+|meego).+mobile|avantgo|bada\/|blackberry|blazer|compal|elaine
 // Variables used to store the buttons used for navigation on mobile. Needed
 // to test which button is pressed so can have the buttons appear when pressed
 var buttonUp, buttonDown, buttonLeft, buttonRight;
-var invisibleButtons = {};
 
 // Set PIXI.js application window to the width and height of the map * size of map textures in pixels.
 var appWidth = mapWidth * tileSize, appHeight = mapHeight * tileSize;
@@ -79,7 +78,7 @@ var state = null;
 // has the same player position that is displayed on the screen.
 var player;
 
-var menuInput, menuScreen = 'main';
+var menuScreen = 'main';
 
 // These variables allow players to hold down buttons to help navigate the map faster
 var xDirectionHeld = 0, yDirectionHeld = 0;
@@ -94,6 +93,9 @@ var mapTiles, openDoorTexture;
 // and redrawn easily after a player changes floors
 var gameTiles = new PIXI.Container();
 
+// When the game is paused, display an in-game menu to allow the user to switch graphics and other options
+var gameMenuTiles = new PIXI.Container();
+
 var infoTiles = new PIXI.Container();
 
 // Holds the socket that handles communication with the server from Socket.IO. Set in the setup function along with the socket's listening events.
@@ -107,13 +109,6 @@ let app = new Application({
     resolution: 1
 });
 
-// gameInfo is a seperate game screen that displays player's name, health, dungeon level, and any other information that might be useful to the player
-/*
-   Amelinka the Brutal Commando
-   Dungeon Level: 1
-   HP: 10   ATK: 1-2
-   "Use Stairs?"    "Save"
- */
 let gameInfo = new Application({
     width: appWidth,
     height: fontHeight * 10,
@@ -219,7 +214,9 @@ function setup() {
             right = keyboard(39),
             down = keyboard(40),
             period = keyboard(190),
-            comma = keyboard(188);
+            comma = keyboard(188),
+            esc = keyboard(27),
+            space = keyboard(32);
 
         //Left arrow key `press` method
         left.press = () => {
@@ -262,54 +259,15 @@ function setup() {
         comma.press = () => {
             useStairs('<');
         };
-    }
 
-
-
-    // The game uses JS alert windows until a proper main menu can be programmed.
-    /*
-    tileSets = confirm('Press OK to use the classic tiles.\nPress Cancel to use new tiles.');
-    var newGame;
-    var dialogValue = '';
-
-    if (confirm("Press 'OK' to start a NEW GAME\nPress 'Cancel' to LOAD GAME from a UUID.")) {
-        playerName = prompt('Please enter your name', defaultName);
-        if (playerName == null || playerName == '') {
-            playerName = defaultName;
+        space.press = () => {
+            useStairs();
         }
-        newGame = true;
-        dialogValue = playerName;
-    } else {
-        // If the player has saves stored on their local machine, display them in the load window.
-        // Player can enter the full save ID or enter the number associated with a save slot.
-        var promptStr = '';
-        var saves = getLocalStorageSaves();
-        if (saves[1].saveID) {
-            promptStr = 'Enter the UUID to load or the number next to a previously played game.\n';
-            for (var i = 1; i <= maxSaves; i++) {
-                if (saves[i].saveID) {
-                    promptStr += i + ') ' + saves[i].name + ' : ' + saves[i].saveID + '\n';
-                }
-            }
-        } else {
-            promptStr = 'Enter the UUID to load:';
-        }
-        var loadID = prompt(promptStr, '');
-        if (!loadID || loadID == '') {
-                newGame = true;
-                dialogValue = -1;    
-        } else {
-            if (loadID <= maxSaves && loadID >= 1) {
-                newGame = false;
-                dialogValue = saves[loadID].saveID;
-            } else {
-                newGame = false;
-                dialogValue = loadID;
-            }
+
+        esc.press = () => {
+            toggleMenu();
         }
     }
-    */
-
 
     socket = io();
     // Sockets handled by Socket.io
@@ -339,7 +297,7 @@ function setup() {
             playerName = playerInfo.name;
             playerTitle = playerInfo.title;
             uuid = playerInfo.saveID;
-            document.getElementById('saveID').innerHTML = '<h1>' + uuid + '</h1>';
+            document.getElementById('saveID').value = uuid;
             setLocalStorageSaves(playerName, uuid);
     });
     // Tile names are determined by the server since the function required function calls that could only be done by the server.
@@ -422,16 +380,30 @@ function setup() {
             drawText2X('ATK: ', 2*fontSize*8, 2*fontHeight*2, 'grey', infoTiles);
             drawText2X(worldTurnData.player.attack[0] + '-' + worldTurnData.player.attack[1], 2*13*fontSize, 2*fontHeight*2, 'white', infoTiles);
             drawText2X('Save', 0, 2*fontHeight*3, tileSets ? 'orange' : 'blue', infoTiles);
-            drawInvisibleButton(0,2*fontHeight*3, 2*fontSize*4, 2*fontHeight, save);
-            infoTiles.addChild(invisibleButtons[0+','+(2*fontHeight*3)]);
+            drawInvisibleButton(0,2*fontHeight*3, 2*fontSize*4, 2*fontHeight, infoTiles, save);
             
             var playerTile = level.map[getPlayerX()+','+getPlayerY()];
             if ((playerTile === '<') || (playerTile === '>')) {
                 var x = 2*fontSize*8;
                 var y = 2*fontHeight*3;
                 drawText2X('Use Stairs', x, y, tileSets ? 'orange' : 'blue', infoTiles);
-                drawInvisibleButton(x,y, 2*fontSize*10, 2*fontHeight, useStairs);
-                infoTiles.addChild(invisibleButtons[x+','+y]);
+                drawInvisibleButton(x,y, 2*fontSize*10, 2*fontHeight, infoTiles, useStairs);
+            }
+            if (uuid) {
+                drawText(uuid, 0, 2*fontHeight*4.25, tileSets ? 'orange' : 'blue', infoTiles);
+                drawInvisibleButton(0, 2*fontHeight*4.25, uuid.length*fontSize, fontHeight, infoTiles, function() {
+                    /* Get the text field */
+                    var copyText = document.getElementById("saveID");
+
+                    /* Select the text field */
+                    copyText.select();
+
+                    /* Copy the text inside the text field */
+                    document.execCommand("Copy");
+
+                    /* Alert the copied text */
+                    alert("Copied your game's save id! You can use this id to load your game from any browser.");
+                });
             }
             gameInfo.stage.addChild(infoTiles);
             infoRenderer.render(gameInfo.stage)
@@ -541,7 +513,9 @@ function updateMenu() {
         for (var i = 1; i <= maxSaves; i++) {
             textYLocation += 2*fontHeight*1.5;
             if (saves[i].saveID) {
-                drawText2X(saves[i].name + ' : ' + saves[i].saveID, textXLocation, textYLocation, 'orange');
+                drawText2X(saves[i].name + ' : ', textXLocation, textYLocation, 'orange');
+                drawText(saves[i].saveID, textXLocation + (saves[i].name.length+4)*fontSize*2, textYLocation + fontHeight/2, 'orange');
+        
             } else {
                 drawText2X('No data in save slot ' + i, textXLocation, textYLocation, 'orange');
             
@@ -837,7 +811,7 @@ function drawText(str, start_x, start_y, color, appContainer) {
             } else if (charAt == '.') {
                 character = '_period';
             } else if (charAt == '-') {
-                character = '_dash';
+                character = '_hyphen';
             } else if (charAt == charAt.toLowerCase()) {
                 character = charAt + '_l';
             } else if (charAt == charAt.toUpperCase()) {
@@ -899,7 +873,7 @@ function drawText2X(str, start_x, start_y, color, appContainer) {
             } else if (charAt == '.') {
                 character = '_period';
             } else if (charAt == '-') {
-                character = '_dash';
+                character = '_hyphen';
             } else if (charAt == charAt.toLowerCase()) {
                 character = charAt + '_l';
             } else if (charAt == charAt.toUpperCase()) {
@@ -921,7 +895,7 @@ function drawText2X(str, start_x, start_y, color, appContainer) {
     
 }
 
-function drawInvisibleButton(x, y, width, height, pressedFunction, releasedFunction) {
+function drawInvisibleButton(x, y, width, height, appContainer, pressedFunction, releasedFunction) {
     var newButton = new PIXI.Graphics();
     newButton.beginFill(0x404040);
     newButton.drawPolygon([
@@ -932,12 +906,12 @@ function drawInvisibleButton(x, y, width, height, pressedFunction, releasedFunct
     ]);
     newButton.endFill();
     newButton
-        .on('pointerdown', (event) => { if(event.target) {pressedFunction()}})
-        .on('pointerup', (event) => { if(event.target) {releasedFunction()}});
+        .on('pointerdown', (event) => { if(event.target) {if (pressedFunction) {pressedFunction()}}})
+        .on('pointerup', (event) => { if(event.target) {if (releasedFunction) {releasedFunction()}}});
     newButton.alpha = 0;
     newButton.interactive = true;
     newButton.buttonMode = true;
-    invisibleButtons[x+','+y] = newButton;
+    appContainer.addChild(newButton);
 }
 
 /**
@@ -1130,6 +1104,7 @@ function screenWithText(text, color) {
     drawText(text, appWidth/2 - (text.length/2) * fontSize, (appHeight - fontHeight)/2, color);
     app.stage.addChild(gameTiles);
     renderer.render(app.stage);
+    infoRenderer.render(gameInfo.stage);
 }
 
 /**
@@ -1140,6 +1115,42 @@ function screenWithText(text, color) {
  * @returns {undefined}
  */
 function error(delta) {
+}
+
+// TODO: Don't switch the state. Create a new container to draw the menu to and draw this above the game app.
+// Once player exits the window, remove the menu container from the game screen.
+// When the player opens the menu, disable the player from moving to prevent updates to the server.
+// Double check network dev tools in browser to make sure menu doesn't send any socket requests
+// In-game menu will only have resume and graphics for right now. Eventually a spot to place inventory.
+// TODO: Allow the gameInfo screen to display different information screens. Swipe or press tab to display item hotbar,
+// character stats, map, anything that is useful to have open while playing but would cause screen clutter.
+// These screens would all be seperate containers to allow quick switching between screens.
+function toggleMenu() {
+    /*
+    if (level && state === play) {
+        gameMenuBackup.gameTiles = gameTiles;
+        gameMenuBackup.player = player;
+        gameMenuBackup.gameInfo = gameInfo;
+        gameMenuBackup.mapSprites = mapSprites;
+        gameMenuBackup.enemySprites = enemySprites;
+        menuScreen = 'game';
+        state = menu;
+        updateMenu();
+    } else if (menuScreen === 'game' && state === menu) {
+        menuScreen = '';
+        gameTiles = gameMenuBackup.gameTiles;
+        player = gameMenuBackup.player;
+        infoTiles = gameMenuBackup.infoTiles;
+        mapSprites = gameMenuBackup.mapSprites;
+        enemySprites = gameMenuBackup.enemySprites;
+
+        app.addChild(gameTiles);
+        app.addChild(player);
+        gameInfo.addChild(infoTiles);
+        renderer.render(app.stage);
+        infoRenderer.render(gameInfo.stage);
+    }
+    */
 }
 
 /**
@@ -1154,6 +1165,7 @@ function clearApp() {
     }
     
     gameTiles = new PIXI.Container();
+    gameInfo.stage.removeChildren();    
     
     if (player)
         app.stage.removeChild(player);
@@ -1333,5 +1345,5 @@ function directionPressed(direction) {
                 directionReleased();
                 break;
         }
-        }
+    }
 }
