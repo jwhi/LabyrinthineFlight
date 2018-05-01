@@ -392,17 +392,21 @@ function setup() {
             if (uuid) {
                 drawText(uuid, 0, 2*fontHeight*4.25, tileSets ? 'orange' : 'blue', infoTiles);
                 drawInvisibleButton(0, 2*fontHeight*4.25, uuid.length*fontSize, fontHeight, infoTiles, function() {
-                    /* Get the text field */
-                    var copyText = document.getElementById("saveID");
+                    if (isMobile) {
+                        prompt("Here is your game's save id! You can use this id to load your game from any browser.", uuid);
+                    } else {
+                        /* Get the text field */
+                        var copyText = document.getElementById("saveID");
 
-                    /* Select the text field */
-                    copyText.select();
+                        /* Select the text field */
+                        copyText.select();
 
-                    /* Copy the text inside the text field */
-                    document.execCommand("Copy");
+                        /* Copy the text inside the text field */
+                        document.execCommand("Copy");
 
-                    /* Alert the copied text */
-                    alert("Copied your game's save id! You can use this id to load your game from any browser.");
+                        /* Alert the copied text */
+                        alert("Copied your game's save id! You can use this id to load your game from any browser.");
+                    }
                 });
             }
             gameInfo.stage.addChild(infoTiles);
