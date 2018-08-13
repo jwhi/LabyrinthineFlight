@@ -46,8 +46,8 @@ var Application = PIXI.Application,
 
 // Number of tiles that make up the width and height of the Roguelike level
 // Unsure what is optimal for performance but still creates a fun map to play
-var mapWidth = 30,
-    mapHeight = 30;
+var mapWidth = 35,
+    mapHeight = 35;
 
 // If running on a mobile phone, will add buttons for navigation
 // and create smaller map.
@@ -542,28 +542,28 @@ function menu(delta) {
         if (menuScreen == 'main') {
             if (menuInput.vy > 0) {
                 menuInput.y += 2*fontHeight*1.5;
-                if (menuInput.y > 736) {
-                    menuInput.y = 544;
+                if (menuInput.y > 896) {
+                    menuInput.y = 704;
                 }
             } else if(menuInput.vy < 0) {
                 menuInput.y -= 2*fontHeight*1.5;
-                if (menuInput.y < 544) {
-                    menuInput.y = 736;
+                if (menuInput.y < 704) {
+                    menuInput.y = 896;
                 }
             }
 
             if (menuInput.vx > 0) {
                 switch(menuInput.y) {
-                    case 544:
+                    case 704:
                         // New Game
                         socket.emit('new game', defaultName);
                         break;
-                    case 640:
+                    case 800:
                         // Load Game
                         menuScreen = 'load';
                         updateMenu();
                         break;
-                    case 736:
+                    case 896:
                         // Graphics
                         switchGraphics();
                         updateMenu();
@@ -582,13 +582,13 @@ function menu(delta) {
             var saves = getLocalStorageSaves();
             if (menuInput.vy > 0) {
                 menuInput.y += 2*fontHeight*1.5;
-                if (menuInput.y > 1152) {
-                    menuInput.y = 576;
+                if (menuInput.y > 1312) {
+                    menuInput.y = 736;
                 }
             } else if(menuInput.vy < 0) {
                 menuInput.y -= 2*fontHeight*1.5;
-                if (menuInput.y < 576) {
-                    menuInput.y = 1152;
+                if (menuInput.y < 736) {
+                    menuInput.y = 1312;
                 }
             }
             
@@ -598,44 +598,44 @@ function menu(delta) {
             } else if (menuInput.vx > 0) {
                 switch(menuInput.y) {
                     // TODO: Can be reduced. Instead of doing things this way, going to create menu objects
-                    // Also instead of checking each x in a switch, will just use Object.keys(saves).length+1)*64
+                    // Also instead of checking each y in a switch, will just use Object.keys(saves).length+1)*64
                     // to find which menu object the user is looking at.
-                    case 576:
+                    case 736:
                         // Save 1
                         if (saves[1].saveID) {
                             socket.emit('load game', saves[1].saveID);
                         }
                         break;
-                    case 672:
+                    case 832:
                         // Save 2
                         if (saves[2].saveID) {
                             socket.emit('load game', saves[2].saveID);
                         }
                         break;
-                    case 768:
+                    case 928:
                         // Save 3
                         if (saves[3].saveID) {
                             socket.emit('load game', saves[3].saveID);
                         }
                         break;
-                    case 864:
+                    case 1024:
                         // Save 4
                         if (saves[4].saveID) {
                             socket.emit('load game', saves[4].saveID);
                         }
                         break;
-                    case 960:
+                    case 1120:
                         // Save 5
                         if (saves[5].saveID) {
                             socket.emit('load game', saves[5].saveID);
                         }
                         break;
-                    case 1056:
+                    case 1216:
                         // Load from Dialog
                         var uuid = prompt("Enter the game's uuid: ", '');
                         socket.emit('load game', uuid);
                         break;
-                    case 1152:
+                    case 1312:
                         // Back
                         menuScreen = 'main';
                         updateMenu();

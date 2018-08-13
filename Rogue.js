@@ -58,8 +58,8 @@ function getPlayerTitle() {
     return ('the ' + adjective + ' ' + nickname);
 }
 
-const mapWidth = 30;
-const mapHeight = 30;
+const mapWidth = 35;
+const mapHeight = 35;
 
 const playerFOVRadius = 8;
 const previouslyExploredAlpha = 0.4;
@@ -153,15 +153,44 @@ class Floor {
         this.levelNumber = levelNumber;
         this.enemies = [];
         this.mapExplored = {};
-        var digger = new ROT.Map.Digger(width, height, {roomWidth:[3,7], roomHeight:[3,7], corridorLength:[2,4], dugPercentage:0.24});
-        //new ROT.Map.Uniform(width, height, {roomWidth: [3,6], roomHeight: [3,6], roomDugPercentage: 0.5});
+        
+        if ((this.levelNumber+1)%5 == 0) {
+        
+            /* create a connected map where the player can reach all non-wall sections */
+            var cellMap = new ROT.Map.Cellular(width, height, { connected: true });
 
-        var digCallback = function(x,y, value) {
-            var key = x + "," + y;
-            if (value) { this.map[key] = " ";}
-            else { this.map[key] = ".";}// Walls: ' ' Floor: '.'
+            /* cells with 1/2 probability */
+            cellMap.randomize(0.43);
+
+            /* make a few generations */
+            for (var i=0; i<5; i++) cellMap.create();
+
+            for (var j = 0; j < height; j++) {
+                for (var i = 0; i < width; i++) {
+                    if (cellMap._map[i][j]) {
+                        this.map[i+','+j] = '%';
+                    } else {
+                        this.map[i+','+j] = ' '
+                    }
+                }
+            }
+
+            var digger = new ROT.Map.Digger(width, height, {roomWidth:[3,7], roomHeight:[3,7], corridorLength:[2,10], dugPercentage:0.2});
+            var digCallback = function(x,y, value) {
+                var key = x + "," + y;
+                if (value) { if (this.map[x+','+y] != '%') { this.map[key] = ' ';}}
+                else { this.map[key] = ".";}// Walls: ' ' Floor: '.'
+            }
+        } else {        
+            var digger = new ROT.Map.Digger(width, height, {roomWidth:[3,7], roomHeight:[3,7], corridorLength:[2,4], dugPercentage:0.24});
+            //new ROT.Map.Uniform(width, height, {roomWidth: [3,6], roomHeight: [3,6], roomDugPercentage: 0.5});
+
+            var digCallback = function(x,y, value) {
+                var key = x + "," + y;
+                if (value) { this.map[key] = " ";}
+                else { this.map[key] = ".";}// Walls: ' ' Floor: '.'
+            }
         }
-
         digger.create(digCallback.bind(this));
 
         this.rooms = digger.getRooms();
@@ -225,7 +254,7 @@ class Floor {
         this.placeEnemies();
         this.dijkstra = new ROT.Path.Dijkstra(this.playerX, this.playerY, function (x, y) {
             if (this.map) {
-                return ((this.map[x+','+y] === '.') || (this.map[x+','+y] === ',') || (this.map[x+','+y] === '-') || (this.map[x+','+y] === '+'))
+                return ((this.map[x+','+y] === '.') || (this.map[x+','+y] === ',') || (this.map[x+','+y] === '-') || (this.map[x+','+y] === '+') || (this.map[x+','+y] === '%'))
             } else {
                 return false;
             }
@@ -240,7 +269,7 @@ class Floor {
         // Player's field-of-view light input callback
         var lightPasses = function(x,y) {
             var key = x+","+y;
-            if (key in localMap) { return ((localMap[key] == ".") || (localMap[key] == ",") || localMap[key] == "-" || localMap[key] == "<" || localMap[key] == ">"); }
+            if (key in localMap) { return ((localMap[key] == ".") || (localMap[key] == ",") || localMap[key] == "-" || localMap[key] == "<" || localMap[key] == ">" || localMap[key] == "%"); }
             return false;
         }
         
@@ -340,7 +369,7 @@ class Floor {
                 mapData = this.map[x+","+y];
                 switch (mapData) {
                     case ' ':
-                        tileName = ' ';
+                        tileName = 'monster 6';
                         break;
                     case '.':
                         tileName = "floor_room";
@@ -359,6 +388,10 @@ class Floor {
                         break;
                     case '-':
                         tileName = "openDoor";
+                        break;
+                    case '%':
+                        // Cave floor
+                        tileName = "trap";
                         break;
                     case '#':
                         // Surround Tiles is an array of the results from checking if the tiles surrounding a wall are in rooms or not.
@@ -446,7 +479,7 @@ class Enemy {
     calculateMove(playerX, playerY, map) {
         var dijkstra = new ROT.Path.Dijkstra(playerX, playerY, function (x, y) {
             if (map) {
-                return ((map[x+','+y] === '.') || (map[x+','+y] === ',') || (map[x+','+y] === '-') || (map[x+','+y] === '+'))
+                return ((map[x+','+y] === '.') || (map[x+','+y] === ',') || (map[x+','+y] === '-') || (map[x+','+y] === '+') || (map[x+','+y] === '%'))
             } else {
                 return false;
             }
