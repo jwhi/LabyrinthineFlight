@@ -945,6 +945,7 @@ function addGameMessage(messageText, color = 'grey') {
     }
 
     // Add message to global variable holding the current games message text.
+    // Think about adding floor number to messages so player can see where they were when they received it.
     gameMessages.push({text: messageText, color: color});
 
     // Clear old messages from the screen.
@@ -1242,7 +1243,8 @@ function clearApp() {
     
     gameTiles = new PIXI.Container();
     gameInfoApp.stage.removeChildren();
-    gameMessagesApp.stage.removeChildren();    
+    // Keep game messages between stages.
+    // gameMessagesApp.stage.removeChildren();    
     
     if (player)
         app.stage.removeChild(player);
