@@ -1,6 +1,7 @@
 "use strict";
 const ROT = require('rot-js');
 const fs = require('fs');
+var os = require('os');
 
 var sg = new ROT.StringGenerator();
 
@@ -13,17 +14,17 @@ var nicknameData;
 
 fs.readFile('keeperrl_male_names.txt', function(err, data) {
     data = data.toString();
-    malePlayerNameData = data.split("\n");
+    malePlayerNameData = data.split(os.EOL);
 });
 
 fs.readFile('keeperrl_female_names.txt', function(err, data) {
     data = data.toString();
-    femalePlayerNameData = data.split("\n");
+    femalePlayerNameData = data.split(os.EOL);
 });
 
 fs.readFile('adjectives.txt', function(err, data) {
     data = data.toString();
-    adjectiveData = data.split("\n");
+    adjectiveData = data.split(os.EOL);
 });
 
 fs.readFile('nicknames.txt', function(err, data) {
@@ -32,7 +33,7 @@ fs.readFile('nicknames.txt', function(err, data) {
         return;
     }
     data = data.toString();
-    nicknameData = data.split("\n");
+    nicknameData = data.split(os.EOL);
 });
 
 
