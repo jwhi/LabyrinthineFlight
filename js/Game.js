@@ -69,7 +69,17 @@ var appWidth = mapWidth * tileSize, appHeight = mapHeight * tileSize;
 
 
 var renderer = PIXI.autoDetectRenderer(appWidth, appHeight, null);
+// Info renderer should be able to fit 10 rows of text, but use drawText2X so only 5 rows fit.
 var infoRenderer = PIXI.autoDetectRenderer(appWidth, fontHeight * 10, null);
+// Message renderer will be using standard draw text so the height will determine how many
+// messages can be displayed at once.
+/*
+ * TODO: Need to find a good position for these messages. Original idea was to have the messages
+ * to the right of game screen on desktop and under game info on mobile. That will make the resize
+ * function and CSS messy, so for now the messages will be under game info for everything and desktop
+ * users will have to scroll down.
+ */ 
+var messageRenderer = PIXI.autoDetectRenderer(appWidth, fontHeight * 20, null)
 
 // Stores the game state used with PIXI.js
 var state = null;
@@ -92,11 +102,12 @@ var mapTiles, openDoorTexture;
 // PIXI can store sprites in a container. This allows all game sprites to be deleted
 // and redrawn easily after a player changes floors
 var gameTiles = new PIXI.Container();
+var infoTiles = new PIXI.Container();
+var messageTiles = new PIXI.Container();
 
 // When the game is paused, display an in-game menu to allow the user to switch graphics and other options
 var gameMenuTiles = new PIXI.Container();
 
-var infoTiles = new PIXI.Container();
 
 // Holds the socket that handles communication with the server from Socket.IO. Set in the setup function along with the socket's listening events.
 var socket;
@@ -109,13 +120,21 @@ let app = new Application({
     resolution: 1
 });
 
-let gameInfo = new Application({
+let gameInfoApp = new Application({
     width: appWidth,
     height: fontHeight * 10,
     antialias: true,
     transparent: false,
     resolution: 1
-})
+});
+
+let gameMessagesApp = new Application({
+    width: appWidth,
+    height: fontHeight * 20,
+    antialias: true,
+    transparent: false,
+    resolution: 1
+});
 
 
 
@@ -370,7 +389,7 @@ function setup() {
             });
         }
         if (worldTurnData.player && level) {
-            gameInfo.stage.removeChildren();
+            gameInfoApp.stage.removeChildren();
             infoTiles = new PIXI.Container(); 
             drawText2X(worldTurnData.player.name + ' ' + worldTurnData.player.title, 0, 0, tileSets ? 'orange' : 'blue', infoTiles);
             var str = 'Dungeon Level: ' + (level.levelNumber + 1);
@@ -409,8 +428,8 @@ function setup() {
                     }
                 });
             }
-            gameInfo.stage.addChild(infoTiles);
-            infoRenderer.render(gameInfo.stage)
+            gameInfoApp.stage.addChild(infoTiles);
+            infoRenderer.render(gameInfoApp.stage)
         }
         renderer.render(app.stage);
     });
@@ -439,9 +458,11 @@ function setup() {
     // Pixi's `ticker` and providing it with a 'delta' argument
     app.ticker.add(delta=>gameLoop(delta));
 
-    // Add the canvas that Pixi automatically created to the HTML document
+    // Add the canvases that Pixi created to the HTML document
+    // These three screens will handle rendering different parts of the game
     document.getElementById('gameScreen').appendChild(renderer.view);
-    document.getElementById('gameInfo').appendChild(infoRenderer.view)
+    document.getElementById('gameInfo').appendChild(infoRenderer.view);
+    document.getElementById('gameMessages').appendChild(messageRenderer.view);
 
     //screenWithText('Welcome to Labyrinthine Flight!', 'white');
     resize();
@@ -964,7 +985,7 @@ function resize() {
     renderer.view.style.width = w*((isMobile) ? 1 : 0.8) + 'px';
     renderer.view.style.height = h*((isMobile) ? 1 : 0.8) + 'px';
     infoRenderer.view.style.width = w + 'px';
-
+    messageRenderer.view.style.width = w + 'px';
 
     
     window.onresize = function(event) {
@@ -1108,7 +1129,8 @@ function screenWithText(text, color) {
     drawText(text, appWidth/2 - (text.length/2) * fontSize, (appHeight - fontHeight)/2, color);
     app.stage.addChild(gameTiles);
     renderer.render(app.stage);
-    infoRenderer.render(gameInfo.stage);
+    infoRenderer.render(gameInfoApp.stage);
+    messageRenderer.render(gameMessagesApp.stage);
 }
 
 /**
@@ -1169,7 +1191,9 @@ function clearApp() {
     }
     
     gameTiles = new PIXI.Container();
-    gameInfo.stage.removeChildren();    
+    gameInfoApp.stage.removeChildren();
+    // Leaving game messages on error for now.
+    // gameMessagesApp.stage.removeChildren();    
     
     if (player)
         app.stage.removeChild(player);
