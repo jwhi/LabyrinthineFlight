@@ -33,6 +33,9 @@ var playerTitle = '';
 // Stores the game's save ID. Received from the server after a new game begins or a game is loaded from the server.
 var uuid;
 
+// Initializes game messages array that will give descriptive text for the game world and player's actions.
+var gameMessages = [];
+
 // Map sprites stores all the map sprites currently drawn on the screen
 // Map alpha stores the opacity for each individual tile that handles the FOV effect
 var mapSprites = [], mapAlpha = [], enemySprites = [];
@@ -318,6 +321,11 @@ function setup() {
             uuid = playerInfo.saveID;
             document.getElementById('saveID').value = uuid;
             setLocalStorageSaves(playerName, uuid);
+            
+            if (gameMessages.length == 0) {
+                addGameMessage('Welcome to Labyrinthine Flight!');
+                addGameMessage(playerName + ', you awake in a dungeon confused to how you got here.');
+            }
     });
     // Tile names are determined by the server since the function required function calls that could only be done by the server.
     // Receieved whenever the player starts a new game or uses stairs. Draw tiles once receieved and set the state to play after
@@ -837,6 +845,8 @@ function drawText(str, start_x, start_y, color, appContainer) {
                 character = '_period';
             } else if (charAt == '-') {
                 character = '_hyphen';
+            } else if (charAt == ',') {
+                character = '_comma';
             } else if (charAt == charAt.toLowerCase()) {
                 character = charAt + '_l';
             } else if (charAt == charAt.toUpperCase()) {
@@ -899,6 +909,8 @@ function drawText2X(str, start_x, start_y, color, appContainer) {
                 character = '_period';
             } else if (charAt == '-') {
                 character = '_hyphen';
+            } else if (charAt == ',') {
+                character = '_comma';
             } else if (charAt == charAt.toLowerCase()) {
                 character = charAt + '_l';
             } else if (charAt == charAt.toUpperCase()) {
@@ -918,6 +930,31 @@ function drawText2X(str, start_x, start_y, color, appContainer) {
         }
     }
     
+}
+
+function addGameMessage(messageText, color = 'grey') {
+    if (!messageText || typeof messageText != "string") {
+        console.log('Error: ' + messageText + ' is not a valid message to display.');
+        return;
+    }
+
+    // Add message to global variable holding the current games message text.
+    gameMessages.push(messageText);
+
+    // Clear old messages from the screen.
+    // TODO: Instead of removing all messages each time, move the old messages and only draw the new one.
+    // Then delete the messages that occur off-screen.
+    gameMessagesApp.stage.removeChildren(); 
+
+    var messageY = 0;
+
+    for (var i = 0; i < gameMessages.length; i++) {
+        drawText(gameMessages[i], 0, messageY, color, messageTiles);
+        messageY += fontHeight;
+    }
+
+    gameMessagesApp.stage.addChild(messageTiles);
+    messageRenderer.render(gameMessagesApp.stage);
 }
 
 function drawInvisibleButton(x, y, width, height, appContainer, pressedFunction, releasedFunction) {
@@ -1192,8 +1229,7 @@ function clearApp() {
     
     gameTiles = new PIXI.Container();
     gameInfoApp.stage.removeChildren();
-    // Leaving game messages on error for now.
-    // gameMessagesApp.stage.removeChildren();    
+    gameMessagesApp.stage.removeChildren();    
     
     if (player)
         app.stage.removeChild(player);
