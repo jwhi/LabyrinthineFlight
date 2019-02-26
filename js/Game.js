@@ -34,7 +34,9 @@ var playerTitle = '';
 var uuid;
 
 // Initializes game messages array that will give descriptive text for the game world and player's actions.
+// Each game message is an object with text and color attributes.
 var gameMessages = [];
+
 
 // Map sprites stores all the map sprites currently drawn on the screen
 // Map alpha stores the opacity for each individual tile that handles the FOV effect
@@ -145,7 +147,7 @@ let gameMessagesApp = new Application({
 PIXI.loader
     .add('level', 'assets/level_creatures.json')
     .add('level_new', 'assets/level_creatures_new.json')
-    .add(['assets/orange_font.json', 'assets/white_font.json', 'assets/grey_font.json', 'assets/blue_font.json'])
+    .add(['assets/orange_font.json', 'assets/white_font.json', 'assets/grey_font.json', 'assets/blue_font.json', 'assets/red_font.json'])
     .load(setup);
 
 
@@ -932,6 +934,10 @@ function drawText2X(str, start_x, start_y, color, appContainer) {
     
 }
 
+/*
+ * addGameMessage
+ * Adds a message to the message window which displays the last 10 messages
+ */
 function addGameMessage(messageText, color = 'grey') {
     if (!messageText || typeof messageText != "string") {
         console.log('Error: ' + messageText + ' is not a valid message to display.');
@@ -939,17 +945,24 @@ function addGameMessage(messageText, color = 'grey') {
     }
 
     // Add message to global variable holding the current games message text.
-    gameMessages.push(messageText);
+    gameMessages.push({text: messageText, color: color});
 
     // Clear old messages from the screen.
     // TODO: Instead of removing all messages each time, move the old messages and only draw the new one.
     // Then delete the messages that occur off-screen.
+    messageTiles = new PIXI.Container(); 
     gameMessagesApp.stage.removeChildren(); 
 
     var messageY = 0;
 
-    for (var i = 0; i < gameMessages.length; i++) {
-        drawText(gameMessages[i], 0, messageY, color, messageTiles);
+    var startIndex = 0;
+
+    if (gameMessages.length > 10) {
+        startIndex = gameMessages.length - 10;
+    }
+
+    for (var i = startIndex; i < gameMessages.length; i++) {
+        drawText(gameMessages[i].text, 0, messageY, gameMessages[i].color, messageTiles);
         messageY += fontHeight;
     }
 
