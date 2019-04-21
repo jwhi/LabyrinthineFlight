@@ -366,6 +366,13 @@ function setup() {
     // Server handles are the FOV calculation. Received after every time a player makes a successful movement on the map.
     // Server lag will lead the FOV not following the player and trailing behind.
     socket.on('worldTurn', function(worldTurnData) {
+        // Set the player's location to what the world has set
+        if (worldTurnData.player) {
+            player.position.set(tileSize * worldTurnData.player.x,
+                tileSize * worldTurnData.player.y);
+            player.vx = 0;
+            player.vy = 0;    
+        }
         if(worldTurnData.fov) {
             for (var j = 0; j < mapHeight; j++) {
                 for (var i = 0; i < mapWidth; i++) {

@@ -300,7 +300,7 @@ class Floor {
         return this.map;
     }
     getPlayerPosition() {
-        return [this.playerX, this.playerY];
+        return {x: this.playerX, y: this.playerY};
     }
     inRoom(x, y) {
         for(var i = 0; i < this.rooms.length; i++) {
@@ -356,6 +356,16 @@ class Floor {
     }
     getEnemies() {
         return this.enemies;
+    }
+    getEnemyAt(x, y) {
+       for (var i = 0; i < this.enemies.length; i++) {
+            var enemy = this.enemies[i];
+            
+            if (enemy.x == x && enemy.y == y) {
+                return enemy;
+            }
+        }
+        return null;
     }
     generateTileNames() {
         // Instead of placing individual tiles, store all tile sprites together in an array
@@ -441,6 +451,8 @@ class Player {
     constructor(name) {
         this.name;
         this.title;
+        this.x = 0,
+        this.y = 0,
         this.health = 10;
         this.attack = [1,2];
         
@@ -460,7 +472,7 @@ class Enemy {
         this.x = x;
         this.y = y;
         this.health = 0;
-        this.attack = 0;
+        this.attack = [1];
         this.accuracy = 0;
         this.char = "";
         this.loot = [];
@@ -469,8 +481,8 @@ class Enemy {
         
         switch (name) {
             case 'goblin':
-                this.health = 3;
-                this.attack = 1;
+                this.health = 4;
+                this.attack = [1];
                 this.accuracy = 0.8;
                 this.char = "g";
                 this.description = "It a goblin.";

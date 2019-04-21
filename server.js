@@ -122,22 +122,50 @@ io.on('connection', function(socket) {
         if (dungeon) {
             var updatedMapTiles = {};
             if (playerTurnData.x && playerTurnData.y) {
-                dungeon.getCurrentFloor().setPlayerPosition(playerTurnData.x, playerTurnData.y);
+                /* CALCULATING PLAYER'S TURN */
+                // COMBAT: Player possible attacks enemy
+                playerAttackingEnemy = dungeon.getCurrentFloor().getEnemyAt(playerTurnData.x, playerTurnData.y);
+                if (playerAttackingEnemy && playerAttackingEnemy.health > 0) {
+                    // Player tried to move to a tile with an enemy that has health.
+                    // Player attacks the enemy.
+                    // Player can have different attack values. Ideally this will be affected by their skills. Right now it chooses a random value in their attack array.
+                    var playerDamage = dungeon.player.attack[Math.floor(Math.random() * dungeon.player.attack.length)];
+                    playerAttackingEnemy.health -= playerDamage;
+                } else {
+                    // If there isn't an alive enemy in the tile, move the player
+                    dungeon.getCurrentFloor().setPlayerPosition(playerTurnData.x, playerTurnData.y);
+                }
+
+                var currentPlayerPosition = dungeon.getCurrentFloor().getPlayerPosition();
+                
                 dungeon.getCurrentFloor().enemies.forEach(function(element) {
                     if (element.health > 0) {
                         enemy = new Rogue.Enemy(element.name, element.x, element.y);
-                        element.path = enemy.calculateMove(playerTurnData.x, playerTurnData.y, dungeon.getCurrentFloor().map);
+                        element.path = enemy.calculateMove(currentPlayerPosition.x, currentPlayerPosition.y, dungeon.getCurrentFloor().map);
                         var moveTo = element.path.shift();
                         if (moveTo) {
-                            element.x = moveTo.x;
-                            element.y = moveTo.y;
-                            if(element.x == playerTurnData.x && element.y == playerTurnData.y) {
-                                element.health = 0;
+                            // COMBAT: Enemy attacks
+                            // TODO: Check if enemy still attacks from one tile away.
+                            if(moveTo.x == currentPlayerPosition.x && moveTo.y == currentPlayerPosition.y) {
+                                // Enemy tried to move on a tile where the player is at.
+                                // Counts as enemy attacking player.
+                                dungeon.player.health -= element.attack[Math.floor(Math.random() * element.attack.length)];
+                                if (dungeon.player.health < 0) {
+                                    dungeon.player.health = 0;
+                                }
+                            } else {
+                                // Tile is free of player.
+                                // Enemy is able to move to the spot.
+                                element.x = moveTo.x;
+                                element.y = moveTo.y;
                             }
                         } else {
+                            // Should only be called when player is on the enemy. This shouldn't happen
+                            // often so we just instantly kill the enemy.
                             element.x = playerTurnData.x;
                             element.y = playerTurnData.y;
                             element.health = 0;
+                            
                         }
                         if (dungeon.getCurrentFloor().map[element.x+','+element.y] == '+') {
                             dungeon.getCurrentFloor().map[element.x+','+element.y] = '-';
@@ -147,8 +175,12 @@ io.on('connection', function(socket) {
                 });
             }
             if (Object.keys(updatedMapTiles).length > 0) {
+                dungeon.player.x = dungeon.getCurrentFloor().playerX;
+                dungeon.player.y = dungeon.getCurrentFloor().playerY;
                 socket.emit('worldTurn', {enemies: dungeon.getCurrentFloor().enemies, fov: dungeon.mapAlphaValues(), map: updatedMapTiles, player: dungeon.player});
             } else {
+                dungeon.player.x = dungeon.getCurrentFloor().playerX;
+                dungeon.player.y = dungeon.getCurrentFloor().playerY;
                 socket.emit('worldTurn', {enemies: dungeon.getCurrentFloor().enemies, fov: dungeon.mapAlphaValues(), player: dungeon.player});
             }
         } else {
