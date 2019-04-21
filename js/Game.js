@@ -391,7 +391,10 @@ function setup() {
                 currentEnemy = level.enemies[i];
                 if (enemySprites[i].texture != mapTiles['corpse']) {
                         enemySprites[i].position.set(currentEnemy.x * tileSize, currentEnemy.y * tileSize);
+                        // Enemy becomes more red as it becomes damaged.
+                        enemySprites[i].tint = 0xFFFFFF - ((1 - (currentEnemy.health / currentEnemy.maxHealth)) * 0x00FFFF);
                     if (currentEnemy.health <= 0) {
+                        enemySprites[i].tint = 0xFFFFFF;
                         enemySprites[i].texture = mapTiles['corpse'];
                     }
                     if (mapSprites[currentEnemy.x+','+currentEnemy.y].alpha == 1) {

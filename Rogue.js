@@ -482,6 +482,7 @@ class Enemy {
         switch (name) {
             case 'goblin':
                 this.health = 4;
+                this.maxHealth = this.health;
                 this.attack = [1];
                 this.accuracy = 0.8;
                 this.char = "g";
