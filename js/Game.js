@@ -740,6 +740,20 @@ function play(delta) {
         }
 
         // TODO: Clean the held down key checks.
+        // The speed the player moves while holding down varies when there is an enemy close to them.
+        heldButtonDelay = 170;
+
+        for (var i = 0; i < level.enemies.length; i++) {
+            // Enemy sprite's alpha is 0 if they are hidden. 1 if visible.
+            // Enemy remains have alpha 1, so make sure the enemy has health before slowing player.
+            var playerLocation = {x: getPlayerX(), y: getPlayerY()};
+            var enemyLocation = { x: level.enemies[i].x, y: level.enemies[i].y };
+            var playerDistanceFromEnemy = Math.ceil(Math.sqrt(Math.pow(playerLocation.x - enemyLocation.x, 2) + Math.pow(playerLocation.y - enemyLocation.y, 2)))
+            if (enemySprites[i].alpha == 1 && playerDistanceFromEnemy <= 3 && level.enemies[i].health > 0) {
+                heldButtonDelay = 300;
+            }
+        }
+
         if (directionKeyHeld) {
             xDirectionHeld = player.vx;
             yDirectionHeld = player.vy;
@@ -749,7 +763,7 @@ function play(delta) {
                 xDirectionHeld = 0;
                 yDirectionHeld = 0;
             
-            }, 170);
+            }, heldButtonDelay);
         }
         player.vx = 0;
         player.vy = 0;
