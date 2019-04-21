@@ -33,6 +33,11 @@ var playerTitle = '';
 // Stores the game's save ID. Received from the server after a new game begins or a game is loaded from the server.
 var uuid;
 
+// Initializes game messages array that will give descriptive text for the game world and player's actions.
+// Each game message is an object with text and color attributes.
+var gameMessages = [];
+
+
 // Map sprites stores all the map sprites currently drawn on the screen
 // Map alpha stores the opacity for each individual tile that handles the FOV effect
 var mapSprites = [], mapAlpha = [], enemySprites = [];
@@ -69,7 +74,17 @@ var appWidth = mapWidth * tileSize, appHeight = mapHeight * tileSize;
 
 
 var renderer = PIXI.autoDetectRenderer(appWidth, appHeight, null);
+// Info renderer should be able to fit 10 rows of text, but use drawText2X so only 5 rows fit.
 var infoRenderer = PIXI.autoDetectRenderer(appWidth, fontHeight * 10, null);
+// Message renderer will be using standard draw text so the height will determine how many
+// messages can be displayed at once.
+/*
+ * TODO: Need to find a good position for these messages. Original idea was to have the messages
+ * to the right of game screen on desktop and under game info on mobile. That will make the resize
+ * function and CSS messy, so for now the messages will be under game info for everything and desktop
+ * users will have to scroll down.
+ */ 
+var messageRenderer = PIXI.autoDetectRenderer(appWidth, fontHeight * 20, null)
 
 // Stores the game state used with PIXI.js
 var state = null;
@@ -92,11 +107,12 @@ var mapTiles, openDoorTexture;
 // PIXI can store sprites in a container. This allows all game sprites to be deleted
 // and redrawn easily after a player changes floors
 var gameTiles = new PIXI.Container();
+var infoTiles = new PIXI.Container();
+var messageTiles = new PIXI.Container();
 
 // When the game is paused, display an in-game menu to allow the user to switch graphics and other options
 var gameMenuTiles = new PIXI.Container();
 
-var infoTiles = new PIXI.Container();
 
 // Holds the socket that handles communication with the server from Socket.IO. Set in the setup function along with the socket's listening events.
 var socket;
@@ -109,13 +125,21 @@ let app = new Application({
     resolution: 1
 });
 
-let gameInfo = new Application({
+let gameInfoApp = new Application({
     width: appWidth,
     height: fontHeight * 10,
     antialias: true,
     transparent: false,
     resolution: 1
-})
+});
+
+let gameMessagesApp = new Application({
+    width: appWidth,
+    height: fontHeight * 20,
+    antialias: true,
+    transparent: false,
+    resolution: 1
+});
 
 
 
@@ -123,7 +147,7 @@ let gameInfo = new Application({
 PIXI.loader
     .add('level', 'assets/level_creatures.json')
     .add('level_new', 'assets/level_creatures_new.json')
-    .add(['assets/orange_font.json', 'assets/white_font.json', 'assets/grey_font.json', 'assets/blue_font.json'])
+    .add(['assets/orange_font.json', 'assets/white_font.json', 'assets/grey_font.json', 'assets/blue_font.json', 'assets/red_font.json'])
     .load(setup);
 
 
@@ -294,11 +318,23 @@ function setup() {
     // loads a game. Display this information on the web page and save to the browser's local storage to allow the
     // user to load this game again in the future.
     socket.on('playerInfo', function(playerInfo) {
-            playerName = playerInfo.name;
-            playerTitle = playerInfo.title;
-            uuid = playerInfo.saveID;
-            document.getElementById('saveID').value = uuid;
-            setLocalStorageSaves(playerName, uuid);
+        playerName = playerInfo.name;
+        playerTitle = playerInfo.title;
+        uuid = playerInfo.saveID;
+        document.getElementById('saveID').value = uuid;
+        setLocalStorageSaves(playerName, uuid);
+        
+        if (searchGameMessages("Press right to select menu option.")) {
+            clearGameMessages();
+            addGameMessage('Welcome to Labyrinthine Flight!');
+            addGameMessage(playerName + ', you awake in a dungeon confused to how you got here.');
+            if (isMobile) {
+                addGameMessage("Use virtual arrow keys to navigate the dungeon.");
+                addGameMessage("Use Stairs button will appear next to player information when on a staircase.");
+            } else {
+                addGameMessage("Arrow keys to navigate the dungeon. Use  .  and  ,  to navigate stairs.");
+            }
+        }
     });
     // Tile names are determined by the server since the function required function calls that could only be done by the server.
     // Receieved whenever the player starts a new game or uses stairs. Draw tiles once receieved and set the state to play after
@@ -370,7 +406,7 @@ function setup() {
             });
         }
         if (worldTurnData.player && level) {
-            gameInfo.stage.removeChildren();
+            gameInfoApp.stage.removeChildren();
             infoTiles = new PIXI.Container(); 
             drawText2X(worldTurnData.player.name + ' ' + worldTurnData.player.title, 0, 0, tileSets ? 'orange' : 'blue', infoTiles);
             var str = 'Dungeon Level: ' + (level.levelNumber + 1);
@@ -409,8 +445,8 @@ function setup() {
                     }
                 });
             }
-            gameInfo.stage.addChild(infoTiles);
-            infoRenderer.render(gameInfo.stage)
+            gameInfoApp.stage.addChild(infoTiles);
+            infoRenderer.render(gameInfoApp.stage)
         }
         renderer.render(app.stage);
     });
@@ -439,9 +475,11 @@ function setup() {
     // Pixi's `ticker` and providing it with a 'delta' argument
     app.ticker.add(delta=>gameLoop(delta));
 
-    // Add the canvas that Pixi automatically created to the HTML document
+    // Add the canvases that Pixi created to the HTML document
+    // These three screens will handle rendering different parts of the game
     document.getElementById('gameScreen').appendChild(renderer.view);
-    document.getElementById('gameInfo').appendChild(infoRenderer.view)
+    document.getElementById('gameInfo').appendChild(infoRenderer.view);
+    document.getElementById('gameMessages').appendChild(messageRenderer.view);
 
     //screenWithText('Welcome to Labyrinthine Flight!', 'white');
     resize();
@@ -454,7 +492,12 @@ function setup() {
     openDoorTexture =  PIXI.Texture.fromImage(doorTilePack);
     // Resize the game window to the browser window so player does not need to scroll
     // to see the entire game board or find where the player is on the screen.
-
+    if (isMobile) {
+        addGameMessage("Use virtual arrow keys to navigate the menu.");
+    } else {
+        addGameMessage("Use arrow keys to navigate menu.");
+    }
+    addGameMessage("Press right to select menu option.");
     updateMenu();
     state = menu;
 }
@@ -816,6 +859,8 @@ function drawText(str, start_x, start_y, color, appContainer) {
                 character = '_period';
             } else if (charAt == '-') {
                 character = '_hyphen';
+            } else if (charAt == ',') {
+                character = '_comma';
             } else if (charAt == charAt.toLowerCase()) {
                 character = charAt + '_l';
             } else if (charAt == charAt.toUpperCase()) {
@@ -878,6 +923,8 @@ function drawText2X(str, start_x, start_y, color, appContainer) {
                 character = '_period';
             } else if (charAt == '-') {
                 character = '_hyphen';
+            } else if (charAt == ',') {
+                character = '_comma';
             } else if (charAt == charAt.toLowerCase()) {
                 character = charAt + '_l';
             } else if (charAt == charAt.toUpperCase()) {
@@ -897,6 +944,59 @@ function drawText2X(str, start_x, start_y, color, appContainer) {
         }
     }
     
+}
+
+/*
+ * addGameMessage
+ * Adds a message to the message window which displays the last 10 messages
+ */
+function addGameMessage(messageText, color = 'grey') {
+    if (!messageText || typeof messageText != "string") {
+        console.log('Error: ' + messageText + ' is not a valid message to display.');
+        return;
+    }
+
+    // Add message to global variable holding the current games message text.
+    // Think about adding floor number to messages so player can see where they were when they received it.
+    gameMessages.push({text: messageText, color: color});
+
+    // Clear old messages from the screen.
+    // TODO: Instead of removing all messages each time, move the old messages and only draw the new one.
+    // Then delete the messages that occur off-screen.
+    messageTiles = new PIXI.Container(); 
+    gameMessagesApp.stage.removeChildren(); 
+
+    var messageY = 0;
+
+    var startIndex = 0;
+
+    if (gameMessages.length > 10) {
+        startIndex = gameMessages.length - 10;
+    }
+
+    for (var i = startIndex; i < gameMessages.length; i++) {
+        drawText(gameMessages[i].text, 0, messageY, gameMessages[i].color, messageTiles);
+        messageY += fontHeight;
+    }
+
+    gameMessagesApp.stage.addChild(messageTiles);
+    messageRenderer.render(gameMessagesApp.stage);
+}
+
+function clearGameMessages() {
+    gameMessages = [];
+    gameMessagesApp.stage.removeChildren();
+    messageRenderer.render(gameMessagesApp.stage);
+}
+
+function searchGameMessages(text) {
+    for (var i = 0; i < gameMessages.length; i++) {
+        if (text == gameMessages[i].text) {
+            return true;
+        }
+    }
+
+    return false;
 }
 
 function drawInvisibleButton(x, y, width, height, appContainer, pressedFunction, releasedFunction) {
@@ -964,7 +1064,7 @@ function resize() {
     renderer.view.style.width = w*((isMobile) ? 1 : 0.8) + 'px';
     renderer.view.style.height = h*((isMobile) ? 1 : 0.8) + 'px';
     infoRenderer.view.style.width = w + 'px';
-
+    messageRenderer.view.style.width = w + 'px';
 
     
     window.onresize = function(event) {
@@ -1108,7 +1208,8 @@ function screenWithText(text, color) {
     drawText(text, appWidth/2 - (text.length/2) * fontSize, (appHeight - fontHeight)/2, color);
     app.stage.addChild(gameTiles);
     renderer.render(app.stage);
-    infoRenderer.render(gameInfo.stage);
+    infoRenderer.render(gameInfoApp.stage);
+    messageRenderer.render(gameMessagesApp.stage);
 }
 
 /**
@@ -1169,7 +1270,9 @@ function clearApp() {
     }
     
     gameTiles = new PIXI.Container();
-    gameInfo.stage.removeChildren();    
+    gameInfoApp.stage.removeChildren();
+    // Keep game messages between stages.
+    // gameMessagesApp.stage.removeChildren();    
     
     if (player)
         app.stage.removeChild(player);
