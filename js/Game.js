@@ -318,16 +318,23 @@ function setup() {
     // loads a game. Display this information on the web page and save to the browser's local storage to allow the
     // user to load this game again in the future.
     socket.on('playerInfo', function(playerInfo) {
-            playerName = playerInfo.name;
-            playerTitle = playerInfo.title;
-            uuid = playerInfo.saveID;
-            document.getElementById('saveID').value = uuid;
-            setLocalStorageSaves(playerName, uuid);
-            
-            if (gameMessages.length == 0) {
-                addGameMessage('Welcome to Labyrinthine Flight!');
-                addGameMessage(playerName + ', you awake in a dungeon confused to how you got here.');
+        playerName = playerInfo.name;
+        playerTitle = playerInfo.title;
+        uuid = playerInfo.saveID;
+        document.getElementById('saveID').value = uuid;
+        setLocalStorageSaves(playerName, uuid);
+        
+        if (searchGameMessages("Press right to select menu option.")) {
+            clearGameMessages();
+            addGameMessage('Welcome to Labyrinthine Flight!');
+            addGameMessage(playerName + ', you awake in a dungeon confused to how you got here.');
+            if (isMobile) {
+                addGameMessage("Use virtual arrow keys to navigate the dungeon.");
+                addGameMessage("Use Stairs button will appear next to player information when on a staircase.");
+            } else {
+                addGameMessage("Arrow keys to navigate the dungeon. Use  .  and  ,  to navigate stairs.");
             }
+        }
     });
     // Tile names are determined by the server since the function required function calls that could only be done by the server.
     // Receieved whenever the player starts a new game or uses stairs. Draw tiles once receieved and set the state to play after
@@ -485,7 +492,12 @@ function setup() {
     openDoorTexture =  PIXI.Texture.fromImage(doorTilePack);
     // Resize the game window to the browser window so player does not need to scroll
     // to see the entire game board or find where the player is on the screen.
-
+    if (isMobile) {
+        addGameMessage("Use virtual arrow keys to navigate the menu.");
+    } else {
+        addGameMessage("Use arrow keys to navigate menu.");
+    }
+    addGameMessage("Press right to select menu option.");
     updateMenu();
     state = menu;
 }
@@ -969,6 +981,22 @@ function addGameMessage(messageText, color = 'grey') {
 
     gameMessagesApp.stage.addChild(messageTiles);
     messageRenderer.render(gameMessagesApp.stage);
+}
+
+function clearGameMessages() {
+    gameMessages = [];
+    gameMessagesApp.stage.removeChildren();
+    messageRenderer.render(gameMessagesApp.stage);
+}
+
+function searchGameMessages(text) {
+    for (var i = 0; i < gameMessages.length; i++) {
+        if (text == gameMessages[i].text) {
+            return true;
+        }
+    }
+
+    return false;
 }
 
 function drawInvisibleButton(x, y, width, height, appContainer, pressedFunction, releasedFunction) {
