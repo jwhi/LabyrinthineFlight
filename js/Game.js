@@ -367,7 +367,19 @@ function setup() {
     // Server lag will lead the FOV not following the player and trailing behind.
     socket.on('worldTurn', function(worldTurnData) {
         // Set the player's location to what the world has set
-        if (worldTurnData.player) {
+        // HACK: If enemy is not on the screen, don't snap player to the position last received by the server.
+        // This will prevent player rubber banding when the enemy is off screen or defeated.
+        var enemyCloseToPlayer = false;
+        for (var i = 0; i < level.enemies.length; i++) {
+            var playerLocation = {x: getPlayerX(), y: getPlayerY()};
+            var enemyLocation = { x: level.enemies[i].x, y: level.enemies[i].y };
+            var playerDistanceFromEnemy = Math.ceil(Math.sqrt(Math.pow(playerLocation.x - enemyLocation.x, 2) + Math.pow(playerLocation.y - enemyLocation.y, 2)))
+            if (playerDistanceFromEnemy < 6 && level.enemies[i].health > 0) {
+                console.log("Enemy is closer than 6 tiles away. Updating player location from server.");
+                enemyCloseToPlayer = true;
+            }
+        }
+        if (worldTurnData.player && enemyCloseToPlayer) {
             player.position.set(tileSize * worldTurnData.player.x,
                 tileSize * worldTurnData.player.y);
             player.vx = 0;
@@ -715,6 +727,29 @@ function play(delta) {
     // Wait for player to perform an action to end the player's turn
     // Right now the only action the player can make is move
     if (player.vx != 0 || player.vy != 0) {
+        // heldButtonDelay is used in the directionHeld helper function.
+        // Declaring up here so only call playerDistanceFromEnemy once which decides if the player
+        // has to wait for the server before moving.
+        // The speed the player moves while holding down varies when there is an enemy close to them.
+        var heldButtonDelay = 170;
+
+        var enemyCloseToPlayer = false;
+
+        for (var i = 0; i < level.enemies.length; i++) {
+            // Enemy sprite's alpha is 0 if they are hidden. 1 if visible.
+            // Enemy remains have alpha 1, so make sure the enemy has health before slowing player.
+            var playerLocation = {x: getPlayerX(), y: getPlayerY()};
+            var enemyLocation = { x: level.enemies[i].x, y: level.enemies[i].y };
+            var playerDistanceFromEnemy = Math.ceil(Math.sqrt(Math.pow(playerLocation.x - enemyLocation.x, 2) + Math.pow(playerLocation.y - enemyLocation.y, 2)))
+            if (enemySprites[i].alpha == 1 && playerDistanceFromEnemy <= 3 && level.enemies[i].health > 0) {
+                heldButtonDelay = 300;
+            }
+            if (playerDistanceFromEnemy < 6 && level.enemies[i].health > 0) {
+                console.log("Enemy is closer than 6 tiles away. Player has to wait on server before movement is updated.");
+                enemyCloseToPlayer = true;
+            }
+        }
+
         var player_x = getPlayerX();
         var player_y = getPlayerY();
         if (canWalk(player_x + player.vx, player_y + player.vy)) {
@@ -722,8 +757,12 @@ function play(delta) {
             player_x += player.vx;
             player_y += player.vy;
 
-            player.x = player_x * tileSize;
-            player.y = player_y * tileSize;
+            // If the enemy is far enough from the player, the player can see movement updates
+            // immediately, but once the enemy is close, player location is handled by worldTurn. 
+            if (!enemyCloseToPlayer) {
+                player.x = player_x * tileSize;
+                player.y = player_y * tileSize;
+            }
             // Player has moved. Update the server and move the player on the map.
             // FOV is still calculated server side so that will lag behind a little.
             // If a player attacks an enemy, disable player movement until client receive world's turn from server
@@ -740,20 +779,6 @@ function play(delta) {
         }
 
         // TODO: Clean the held down key checks.
-        // The speed the player moves while holding down varies when there is an enemy close to them.
-        heldButtonDelay = 170;
-
-        for (var i = 0; i < level.enemies.length; i++) {
-            // Enemy sprite's alpha is 0 if they are hidden. 1 if visible.
-            // Enemy remains have alpha 1, so make sure the enemy has health before slowing player.
-            var playerLocation = {x: getPlayerX(), y: getPlayerY()};
-            var enemyLocation = { x: level.enemies[i].x, y: level.enemies[i].y };
-            var playerDistanceFromEnemy = Math.ceil(Math.sqrt(Math.pow(playerLocation.x - enemyLocation.x, 2) + Math.pow(playerLocation.y - enemyLocation.y, 2)))
-            if (enemySprites[i].alpha == 1 && playerDistanceFromEnemy <= 3 && level.enemies[i].health > 0) {
-                heldButtonDelay = 300;
-            }
-        }
-
         if (directionKeyHeld) {
             xDirectionHeld = player.vx;
             yDirectionHeld = player.vy;
