@@ -59,7 +59,7 @@ function getPlayerTitle() {
     return ('the ' + adjective + ' ' + nickname);
 }
 
-const mapWidth = 35;
+const mapWidth = 50;
 const mapHeight = 35;
 
 const playerFOVRadius = 8;

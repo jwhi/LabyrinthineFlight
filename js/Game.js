@@ -1,3 +1,78 @@
+/*
+    Re-write plan.
+        1. Reduce all the data being written to and from the server. Less data needing to be transfer will lower cost of hosting and improve user experience.
+        2. Clean-up what happens when a player and enemy turns.
+        2. Item system 
+        3. In-game menus. This is needed to equip and consume items
+        4. World gen updates. Want to add shops on starting level. This will be the 'point assignment'/'starting equipment' menu. Allows player to buy their gear for the dungeon
+            a. Possibly have them be able to travel back up to buy more items or have job assignments for tasks in the dungeon.
+            b. Or, you rest in the inn before deciding to explore the dungeon, orcs attack, pushing you into the dungeon and collapsing the entrance.
+        5. Secret passages
+        6. Traps
+        7. Client/Server need to keep track of turn #. If there is ever a point where player turn is too far ahead of the world turn that is being sent from the server,
+           pause the game and say waiting for server. Also not sure if there is ever a point where web sockets will be received out of order, but should still verify data
+           is being sent in the right order. Hopefully this won't ever be a big deal, but once I start messing with sending less data and relying on previous data, this will be
+           important. If things get too messy (FOV loaded incorrectly, enemy/player data is wrong), can request the server to send the full data instead of a diff as a reset to
+           make sure client and server are on the same page.
+        8. Once items are a thing, will need to save all previous floors, not just the floors the player is currently on. 
+        9. Message system doesn't have to use canvas, and probably shouldn't. Instead use HTML scroll text boxes. This will be better for usability.
+        10. Pull as many things into an "engine" as possible so updating graphics will be easier.
+            a. Calls to see a merchant screen should just send an array of the items they carry. When a player buys it, send the merchant id and item slot.
+            b. Calls to update inventory will just be a JSON file and that will be parsed into an HTML interface or graphics if that is the eventual plan.
+
+    Calls from server:
+        'dungeon'
+            The dungeon object received from the server. Defined in the server's Rogue.js file
+            Dungeons are only received at the start of games and when player travels up or down a staircase.
+            Prints the maps layout to debug console for testing. Calls updateMap to to prepare drawing the map tiles.
+    
+        'playerInfo'
+            Player info contains the player's name and the game's save ID. Received once a new game begins or a player
+            loads a game. Display this information on the web page and save to the browser's local storage to allow the
+            user to load this game again in the future.
+        
+        'tileNames'
+            Tile names are determined by the server since the function required function calls that could only be done by the server.
+            Received whenever the player starts a new game or uses stairs. Draw tiles once received and set the state to play after
+            all tiles are drawn to allow the user to start moving the player.
+        
+        'worldTurn'
+            TODO: If player leaves and comes back, enemy gets a free turn.
+            TODO: Right now, new alpha values for the whole dungeon are being sent for the fov. Calculate which values were updated and just send the individual values that changed.
+
+            Server handles are the FOV calculation. Received after every time a player makes a successful movement on the map.
+            Server lag will lead the FOV not following the player and trailing behind.
+            Handles enemy attacks and enemy movement
+        
+        'missing'
+            If the player disconnects from the server, happens often if playing on a phone and the user locks their screen, the server will no
+            longer have the player's dungeon data loaded in memory. In order to continue the game, the server needs to discretely load the user's
+            data to allow them to keep playing. Displays an error screen if there is an issue if the server can't recover. If the server can recover,
+            the user will snap to the location last saved on the server, but then will be able to continue as normal for the most part. Loading the game
+            causes all previous floors to lose their map data so exploration will be reset and doors will be closed.
+        
+    Calls to the server:
+        Right now it is all simple calls.
+        Every time the player starts the game, goes up/down a level, changes position.
+
+
+*/
+
+
+/*
+    CODE BLOCKS:
+    BLOCK 1 - Variables and setup
+    BLOCK 2 - Socket.IO Data Received Functions
+    BLOCK 3 - Initialize Game Loop and Add Game Elements to Page
+    BLOCK 4 - Menu Functions
+    BLOCK 5 - Core Game Functions
+    BLOCK 6 - Graphics Helper Functions
+    BLOCK 7 - Misc. Unsorted Functions
+*/
+
+
+/******************* BLOCK 1 - Variables and setup *******************/
+
 // Currently the tiles used are 64x64 pixels. Originally 16x16 but PIXI.js
 // had issues with scaling sprites that small
 const tileSize = 64;
@@ -13,6 +88,8 @@ const lineSpacing = 8;
 // Max number of saves to be displayed in the client's game window. Fully customizable but setting this number too large
 // can make the alert window be overwhelming for users.
 const maxSaves = 5;
+
+const gameSaves = getLocalStorageSaves();
 
 // Used when first drawing tiles to the screen. Mostly for testing
 const defaultAlpha = 1;
@@ -51,7 +128,7 @@ var Application = PIXI.Application,
 
 // Number of tiles that make up the width and height of the Roguelike level
 // Unsure what is optimal for performance but still creates a fun map to play
-var mapWidth = 35,
+var mapWidth = 50,
     mapHeight = 35;
 
 // If running on a mobile phone, will add buttons for navigation
@@ -293,6 +370,9 @@ function setup() {
         }
     }
 
+
+    /******************* BLOCK 2 - Socket.IO Data Received Functions *******************/
+
     socket = io();
     // Sockets handled by Socket.io
     // When the page receives these packets, update the webpage as needed
@@ -492,7 +572,7 @@ function setup() {
         }
     });
     
-
+    /******************* BLOCK 3 - Initialize Game Loop and Add Game Elements to Page *******************/
     // Start the game loop by adding the `gameLoop` function to
     // Pixi's `ticker` and providing it with a 'delta' argument
     app.ticker.add(delta=>gameLoop(delta));
@@ -523,6 +603,8 @@ function setup() {
     updateMenu();
     state = menu;
 }
+
+/******************* BLOCK 4 - Menu Functions *******************/
 
 function switchGraphics() {
     tileSets = !tileSets;
@@ -577,13 +659,12 @@ function updateMenu() {
         var textYLocation =  (appHeight/2) - (fontHeight*16 - 32) ;
         menuInput.position.set(textXLocation, textYLocation + 2*fontHeight*1.5);
         textXLocation += tileSize;
-        var saves = getLocalStorageSaves();
         
         for (var i = 1; i <= maxSaves; i++) {
             textYLocation += 2*fontHeight*1.5;
-            if (saves[i].saveID) {
-                drawText2X(saves[i].name + ' : ', textXLocation, textYLocation, 'orange');
-                drawText(saves[i].saveID, textXLocation + (saves[i].name.length+4)*fontSize*2, textYLocation + fontHeight/2, 'orange');
+            if (gameSaves[i].saveID) {
+                drawText2X(gameSaves[i].name + ' : ', textXLocation, textYLocation, 'orange');
+                drawText(gameSaves[i].saveID, textXLocation + (gameSaves[i].name.length+4)*fontSize*2, textYLocation + fontHeight/2, 'orange');
         
             } else {
                 drawText2X('No data in save slot ' + i, textXLocation, textYLocation, 'orange');
@@ -644,7 +725,6 @@ function menu(delta) {
                 console.log(menuInput.y);
             }
         } else if (menuScreen == 'load') {
-            var saves = getLocalStorageSaves();
             if (menuInput.vy > 0) {
                 menuInput.y += 2*fontHeight*1.5;
                 if (menuInput.y > 1312) {
@@ -667,32 +747,32 @@ function menu(delta) {
                     // to find which menu object the user is looking at.
                     case 736:
                         // Save 1
-                        if (saves[1].saveID) {
-                            socket.emit('load game', saves[1].saveID);
+                        if (gameSaves[1].saveID) {
+                            socket.emit('load game', gameSaves[1].saveID);
                         }
                         break;
                     case 832:
                         // Save 2
-                        if (saves[2].saveID) {
-                            socket.emit('load game', saves[2].saveID);
+                        if (gameSaves[2].saveID) {
+                            socket.emit('load game', gameSaves[2].saveID);
                         }
                         break;
                     case 928:
                         // Save 3
-                        if (saves[3].saveID) {
-                            socket.emit('load game', saves[3].saveID);
+                        if (gameSaves[3].saveID) {
+                            socket.emit('load game', gameSaves[3].saveID);
                         }
                         break;
                     case 1024:
                         // Save 4
-                        if (saves[4].saveID) {
-                            socket.emit('load game', saves[4].saveID);
+                        if (gameSaves[4].saveID) {
+                            socket.emit('load game', gameSaves[4].saveID);
                         }
                         break;
                     case 1120:
                         // Save 5
-                        if (saves[5].saveID) {
-                            socket.emit('load game', saves[5].saveID);
+                        if (gameSaves[5].saveID) {
+                            socket.emit('load game', gameSaves[5].saveID);
                         }
                         break;
                     case 1216:
@@ -716,6 +796,8 @@ function menu(delta) {
         renderer.render(app.stage);
     }
 }
+
+/******************* BLOCK 5 - Core Game Functions *******************/
 
 /**
  * play
@@ -745,7 +827,7 @@ function play(delta) {
                 heldButtonDelay = 300;
             }
             if (playerDistanceFromEnemy < 6 && level.enemies[i].health > 0) {
-                console.log("Enemy is closer than 6 tiles away. Player has to wait on server before movement is updated.");
+                // console.log("Enemy is closer than 6 tiles away. Player has to wait on server before movement is updated.");
                 enemyCloseToPlayer = true;
             }
         }
@@ -778,7 +860,7 @@ function play(delta) {
             renderer.render(app.stage);
         }
 
-        // TODO: Clean the held down key checks.
+        // TODO: The will occasionally stop working. Don't know if it is user error or timer callback problems.
         if (directionKeyHeld) {
             xDirectionHeld = player.vx;
             yDirectionHeld = player.vy;
@@ -836,6 +918,8 @@ function updateMap() {
     socket.emit('playerTurn', {x: getPlayerX(), y: getPlayerY()});
     return true;
 }
+
+/******************* BLOCK 6 - Graphics Helper Functions *******************/
 
 /**
  * placeTile
@@ -994,6 +1078,8 @@ function drawText2X(str, start_x, start_y, color, appContainer) {
     }
     
 }
+
+/******************* BLOCK 7 - Misc. Unsorted Functions *******************/
 
 /*
  * addGameMessage
