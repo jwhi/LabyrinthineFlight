@@ -4,6 +4,15 @@ Currently refactoring since most of the code base was created for a project. Dec
 
 ## Refactor plan.
 1. Reduce all the data being written to and from the server. Less data needing to be transfer will lower cost of hosting and improve user experience.
+    1. Rewrote these functions. Can be improved but major issues were fixed. Could still improve how games are initialized.
+    2. ~~Dungeon call from server includes the entire dungeon.Floor object. Only need:~~
+        1. ~~Floor.map for floor/wall/stair data~~
+        2. ~~enemies for their positions and health~~
+        3. ~~Player X and Y data~~
+    3. ~~Combine dungeon and tileNames calls~~
+        1. ~~Dungeon call just prints debug string with map data then calls update_map~~
+        2. ~~Update map clears game screen, sets player sprite position based on level data, and emits 'request tileNames' and 'playerTurn' at the same time~~
+        3. ~~Initial load should not call player's turn and all the data for the player needs from this playerTurn call should be included in 'dungeon' information that gets sent at the start of a floor.~~
 2. Clean-up what happens when a player and enemy turns.
 3. Item system 
 4. In-game menus. This is needed to equip and consume items
@@ -22,6 +31,8 @@ Currently refactoring since most of the code base was created for a project. Dec
 11. Pull as many things into an "engine" as possible so updating graphics will be easier.
     1. Calls to see a merchant screen should just send an array of the items they carry. When a player buys it, send the merchant id and item slot.
     2. Calls to update inventory will just be a JSON file and that will be parsed into an HTML interface or graphics if that is the eventual plan.
+12. Find a way to store items for different player's games, item locations, picked up or not? (probably not needed since if no location, then player has it or destroyed it)
+    1. This would be related to an items table, but not sure if would have random stats or set stats and random items that can appear.
 
 ## Previous README
 

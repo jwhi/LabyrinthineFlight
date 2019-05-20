@@ -77,7 +77,7 @@ class Dungeon {
         } else {
             this.furthestFloor = floorNumber;
         }
-       this.player = new Player();
+        this.player = new Player();
         this.floors = [];
         this.seed = seed;
         ROT.RNG.setSeed(this.seed + this.floorNumber);
@@ -95,6 +95,27 @@ class Dungeon {
     }
     getCurrentFloor() {
         return this.floors[this.floorNumber];
+    }
+
+    getFloorDataForClient(options = {}) {
+        const {
+            includePlayerInfo = false
+        } = options;
+        var floor = this.getCurrentFloor();
+        var returnObject = {
+            map: floor.map,
+            levelNumber: this.floorNumber,
+            enemies: floor.enemies,
+            playerX: floor.playerX,
+            playerY: floor.playerY,
+            tileNames: floor.generateTileNames(),
+            fov: this.mapAlphaValues(floor.playerX, floor.playerY)
+        }
+        if (options.includePlayerInfo) {
+            returnObject.playerName = this.player.name;
+            returnObject.playerTitle = this.player.title;
+        }
+        return returnObject;
     }
     
     useStairs(symbol) {
@@ -259,11 +280,9 @@ class Floor {
             } else {
                 return false;
             }
-        }); 
-
-
-        
+        });     
     }
+
     updateFOV(pX, pY) {
         var localMap = this.map;
         var localMapExplored = this.mapExplored;

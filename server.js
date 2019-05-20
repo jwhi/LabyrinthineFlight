@@ -55,15 +55,15 @@ io.on('connection', function(socket) {
         if (name  && name != 'Prisoner') {
             dungeon.player.name = name;
         }
-        socket.emit('dungeon', dungeon.getCurrentFloor());
+        var initialDungeonData = dungeon.getFloorDataForClient({includePlayerInfo: true});
+        initialDungeonData.saveID = uuid;
+        socket.emit('dungeon', initialDungeonData);
         //  create table saves(uuid text primary key, playerData text, mapData text);
-        
         db.run(`INSERT INTO saves VALUES ($uuid, $playerData, $mapData)`, {
                     $uuid: uuid,
                     $playerData: JSON.stringify({name: dungeon.player.name, title: dungeon.player.title, x: dungeon.getCurrentFloor().playerX, y: dungeon.getCurrentFloor().playerY}),
                     $mapData: JSON.stringify({seed: seed, currentFloor: dungeon.floorNumber, maxFloor: dungeon.floors.length - 1, map: dungeon.getCurrentFloor().map, fov: dungeon.mapAlphaValues(), enemies: dungeon.getCurrentFloor().enemies})
         });
-        socket.emit('playerInfo', {name: dungeon.player.name, title: dungeon.player.title, saveID: uuid});
     });
     socket.on('load game', function(loadID) {
         db.get(`SELECT * FROM saves WHERE uuid = $uuid;`, { $uuid: loadID },
@@ -84,8 +84,9 @@ io.on('connection', function(socket) {
                 dungeon.setAlphaValues(mapData.fov);
                 dungeon.getCurrentFloor().playerX = playerData.x;
                 dungeon.getCurrentFloor().playerY = playerData.y;
-                socket.emit('dungeon', dungeon.getCurrentFloor());
-                socket.emit('playerInfo', {name: dungeon.player.name, title: dungeon.player.title, saveID: uuid});
+                var initialDungeonData = dungeon.getFloorDataForClient({includePlayerInfo: true});
+                initialDungeonData.saveID = uuid;
+                socket.emit('dungeon', initialDungeonData);
             }
         });
     });
@@ -96,11 +97,11 @@ io.on('connection', function(socket) {
                 break;
             case 'floor down':
                 dungeon.gotoFloor(dungeon.floorNumber + 1, "up");
-                socket.emit('dungeon', dungeon.getCurrentFloor());
+                socket.emit('dungeon', dungeon.getFloorDataForClient());
                 break;
             case 'floor up':
                 dungeon.gotoFloor(dungeon.floorNumber - 1, "down");
-                socket.emit('dungeon', dungeon.getCurrentFloor());
+                socket.emit('dungeon', dungeon.getFloorDataForClient());
                 break;
             case 'name':
                 if (name) {
