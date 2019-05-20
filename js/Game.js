@@ -1,43 +1,13 @@
 /*
-    Re-write plan.
-        1. Reduce all the data being written to and from the server. Less data needing to be transfer will lower cost of hosting and improve user experience.
-        2. Clean-up what happens when a player and enemy turns.
-        2. Item system 
-        3. In-game menus. This is needed to equip and consume items
-        4. World gen updates. Want to add shops on starting level. This will be the 'point assignment'/'starting equipment' menu. Allows player to buy their gear for the dungeon
-            a. Possibly have them be able to travel back up to buy more items or have job assignments for tasks in the dungeon.
-            b. Or, you rest in the inn before deciding to explore the dungeon, orcs attack, pushing you into the dungeon and collapsing the entrance.
-        5. Secret passages
-        6. Traps
-        7. Client/Server need to keep track of turn #. If there is ever a point where player turn is too far ahead of the world turn that is being sent from the server,
-           pause the game and say waiting for server. Also not sure if there is ever a point where web sockets will be received out of order, but should still verify data
-           is being sent in the right order. Hopefully this won't ever be a big deal, but once I start messing with sending less data and relying on previous data, this will be
-           important. If things get too messy (FOV loaded incorrectly, enemy/player data is wrong), can request the server to send the full data instead of a diff as a reset to
-           make sure client and server are on the same page.
-        8. Once items are a thing, will need to save all previous floors, not just the floors the player is currently on. 
-        9. Message system doesn't have to use canvas, and probably shouldn't. Instead use HTML scroll text boxes. This will be better for usability.
-        10. Pull as many things into an "engine" as possible so updating graphics will be easier.
-            a. Calls to see a merchant screen should just send an array of the items they carry. When a player buys it, send the merchant id and item slot.
-            b. Calls to update inventory will just be a JSON file and that will be parsed into an HTML interface or graphics if that is the eventual plan.
-
+    
     Calls from server:
         'dungeon'
             The dungeon object received from the server. Defined in the server's Rogue.js file
             Dungeons are only received at the start of games and when player travels up or down a staircase.
             Prints the maps layout to debug console for testing. Calls updateMap to to prepare drawing the map tiles.
+            Combined playerInfo and tileName calls into this function and object.
     
-        'playerInfo'
-            Player info contains the player's name and the game's save ID. Received once a new game begins or a player
-            loads a game. Display this information on the web page and save to the browser's local storage to allow the
-            user to load this game again in the future.
-        
-        'tileNames'
-            Tile names are determined by the server since the function required function calls that could only be done by the server.
-            Received whenever the player starts a new game or uses stairs. Draw tiles once received and set the state to play after
-            all tiles are drawn to allow the user to start moving the player.
-        
         'worldTurn'
-            TODO: If player leaves and comes back, enemy gets a free turn.
             TODO: Right now, new alpha values for the whole dungeon are being sent for the fov. Calculate which values were updated and just send the individual values that changed.
 
             Server handles are the FOV calculation. Received after every time a player makes a successful movement on the map.
@@ -392,40 +362,33 @@ function setup() {
             str += '\n';
         }
         console.log(str);
-        updateMap();
-    });
-    // Player info contains the player's name and the game's save ID. Received once a new game begins or a player
-    // loads a game. Display this information on the web page and save to the browser's local storage to allow the
-    // user to load this game again in the future.
-    socket.on('playerInfo', function(playerInfo) {
-        playerName = playerInfo.name;
-        playerTitle = playerInfo.title;
-        uuid = playerInfo.saveID;
-        document.getElementById('saveID').value = uuid;
-        setLocalStorageSaves(playerName, uuid);
+        /**
+         * Clears the screen and resets the player. Moves the player to the new floor's location.
+         * Sends requests to the server to get the tile names and alpha values for the new floor.
+         */
+        clearApp();
+        player = new Sprite(mapTiles['player']);
+        player.position.set(tileSize * level.playerX,
+                            tileSize * level.playerY);
+        player.vx = 0;
+        player.vy = 0;
         
-        if (searchGameMessages("Press right to select menu option.")) {
-            clearGameMessages();
-            addGameMessage('Welcome to Labyrinthine Flight!');
-            addGameMessage(playerName + ', you awake in a dungeon confused to how you got here.');
-            if (isMobile) {
-                addGameMessage("Use virtual arrow keys to navigate the dungeon.");
-                addGameMessage("Use Stairs button will appear next to player information when on a staircase.");
-            } else {
-                addGameMessage("Arrow keys to navigate the dungeon. Use  .  and  ,  to navigate stairs.");
+        // Tile names are determined by the server since the function required function calls that could only be done by the server.
+        // Received whenever the player starts a new game or uses stairs. Draw tiles once received and set the state to play after
+        // all tiles are drawn to allow the user to start moving the player.
+        if (level.tileNames) {
+            for (let y = 0; y < mapHeight; y++) {
+                for (let x = 0; x < mapWidth; x++) {
+                    mapSprites[x+','+y] = placeTile(level.tileNames[x+','+y], x * tileSize, y * tileSize);
+                }
             }
         }
-    });
-    // Tile names are determined by the server since the function required function calls that could only be done by the server.
-    // Receieved whenever the player starts a new game or uses stairs. Draw tiles once receieved and set the state to play after
-    // all tiles are drawn to allow the user to start moving the player.
-    socket.on('tileNames', function(tileNames) {
-        for (let y = 0; y < mapHeight; y++) {
-            for (let x = 0; x < mapWidth; x++) {
-                mapSprites[x+','+y] = placeTile(tileNames[x+','+y], x * tileSize, y * tileSize);
-            }
+    
+        if (level.fov) {
+            updateMapFOV(level.fov);
         }
-        if (level) {
+
+        if (level.enemies) {
             for (let i = 0; i < level.enemies.length; i++) {
                 currentEnemy = level.enemies[i];
                 if (currentEnemy.health > 0) {
@@ -434,15 +397,51 @@ function setup() {
                     enemySprites[i] = placeTile('corpse', currentEnemy.x * tileSize, currentEnemy.y * tileSize);
                 }
             }
-        }
-
+            updateEnemySprites(level.enemies);
+        }   
         app.stage.addChild(gameTiles);
         gameTiles.addChild(player);
+
+
+        // First dungeon packet from server contains the player's name and the game's save ID. Received once a new game begins or a player
+        // loads a game. Display this information on the web page and save to the browser's local storage to allow the
+        // user to load this game again in the future.
+        if (level.playerName && level.playerTitle) {
+            playerName = level.playerName;
+            playerTitle = level.playerTitle;
+
+            if (searchGameMessages("Press right to select menu option.")) {
+                clearGameMessages();
+                addGameMessage('Welcome to Labyrinthine Flight!');
+                addGameMessage(playerName + ', you awake in a dungeon confused to how you got here.');
+                if (isMobile) {
+                    addGameMessage("Use virtual arrow keys to navigate the dungeon.");
+                    addGameMessage("Use Stairs button will appear next to player information when on a staircase.");
+                } else {
+                    addGameMessage("Arrow keys to navigate the dungeon. Use  .  and  ,  to navigate stairs.");
+                }
+            }
+        }
+        
+        if (level.saveID) {
+            uuid = level.saveID;
+            document.getElementById('saveID').value = uuid;
+            setLocalStorageSaves(playerName, uuid);
+        }
+        
+        
+        gameInfoApp.stage.addChild(infoTiles);
+        infoRenderer.render(gameInfoApp.stage);
+
         //drawText(playerName + ' ' + playerTitle, 0, 0);
         //var str = 'Dungeon Level: ' + (level.levelNumber + 1);
         //drawText(str, 0, appHeight - fontSize*2);
         state = play;
+
+        renderer.render(app.stage);
+        console.log("Called render on app.stage")
     });
+    
     // Server handles are the FOV calculation. Received after every time a player makes a successful movement on the map.
     // Server lag will lead the FOV not following the player and trailing behind.
     socket.on('worldTurn', function(worldTurnData) {
@@ -465,39 +464,12 @@ function setup() {
             player.vx = 0;
             player.vy = 0;    
         }
-        if(worldTurnData.fov) {
-            for (var j = 0; j < mapHeight; j++) {
-                for (var i = 0; i < mapWidth; i++) {
-                    var t = mapSprites[i+','+j];
-                    if (t) {
-                        t.alpha = worldTurnData.fov[i+','+j];
-                        // TODO: Instead of setting the sprites alpha, set the sprites tint.
-                        // This will improv visual effect of items and enemy's remains on explored tiles
-                    }
-                }
-            }
+        if (worldTurnData.fov) {
+            updateMapFOV(worldTurnData.fov);
         }
         if (worldTurnData.enemies && level) {
-            level.enemies = worldTurnData.enemies;
-            for (let i = 0; i < level.enemies.length; i++) {
-                currentEnemy = level.enemies[i];
-                if (enemySprites[i].texture != mapTiles['corpse']) {
-                        enemySprites[i].position.set(currentEnemy.x * tileSize, currentEnemy.y * tileSize);
-                        // Enemy becomes more red as it becomes damaged.
-                        enemySprites[i].tint = 0xFFFFFF - ((1 - (currentEnemy.health / currentEnemy.maxHealth)) * 0x00FFFF);
-                    if (currentEnemy.health <= 0) {
-                        enemySprites[i].tint = 0xFFFFFF;
-                        enemySprites[i].texture = mapTiles['corpse'];
-                    }
-                    if (mapSprites[currentEnemy.x+','+currentEnemy.y].alpha == 1) {
-                        enemySprites[i].alpha = 1;
-                    } else {
-                        enemySprites[i].alpha = 0;
-                    }
-                } else {
-                    enemySprites[i].alpha = mapSprites[currentEnemy.x+','+currentEnemy.y].alpha;
-                }
-            }
+            level.enemies = worldTurnData.enemies
+            updateEnemySprites(level.enemies)
         }
         if (worldTurnData.map && level) {
             Object.keys(worldTurnData.map).forEach(function(key) {
@@ -548,7 +520,7 @@ function setup() {
                 });
             }
             gameInfoApp.stage.addChild(infoTiles);
-            infoRenderer.render(gameInfoApp.stage)
+            infoRenderer.render(gameInfoApp.stage);
         }
         renderer.render(app.stage);
     });
@@ -901,24 +873,6 @@ function canWalk(x, y) {
     }
 }
 
-/**
- * updateMap
- * Clears the screen and resets the player. Moves the player to the new floor's location.
- * Sends requests to the server to get the tile names and alpha values for the new floor.
- */
-function updateMap() {
-    clearApp();
-    player = new Sprite(mapTiles['player']);
-    player.position.set(tileSize * level.playerX,
-                        tileSize * level.playerY);
-    player.vx = 0;
-    player.vy = 0;
-    
-    socket.emit('request', 'tileNames');
-    socket.emit('playerTurn', {x: getPlayerX(), y: getPlayerY()});
-    return true;
-}
-
 /******************* BLOCK 6 - Graphics Helper Functions *******************/
 
 /**
@@ -1075,8 +1029,42 @@ function drawText2X(str, start_x, start_y, color, appContainer) {
             }
             x += fontSize*2;
         }
+    }   
+}
+
+function updateEnemySprites(enemyData) {
+    for (let i = 0; i < enemyData.length; i++) {
+        currentEnemy = enemyData[i];
+        if (enemySprites[i].texture != mapTiles['corpse']) {
+                enemySprites[i].position.set(currentEnemy.x * tileSize, currentEnemy.y * tileSize);
+                // Enemy becomes more red as it becomes damaged.
+                enemySprites[i].tint = 0xFFFFFF - ((1 - (currentEnemy.health / currentEnemy.maxHealth)) * 0x00FFFF);
+            if (currentEnemy.health <= 0) {
+                enemySprites[i].tint = 0xFFFFFF;
+                enemySprites[i].texture = mapTiles['corpse'];
+            }
+            if (mapSprites[currentEnemy.x+','+currentEnemy.y].alpha == 1) {
+                enemySprites[i].alpha = 1;
+            } else {
+                enemySprites[i].alpha = 0;
+            }
+        } else {
+            enemySprites[i].alpha = mapSprites[currentEnemy.x+','+currentEnemy.y].alpha;
+        }
     }
-    
+}
+
+function updateMapFOV(alphaValues) {
+    for (var j = 0; j < mapHeight; j++) {
+        for (var i = 0; i < mapWidth; i++) {
+            var t = mapSprites[i+','+j];
+            if (t) {
+                t.alpha = alphaValues[i+','+j];
+                // TODO: Instead of setting the sprites alpha, set the sprites tint.
+                // This will improv visual effect of items and enemy's remains on explored tiles
+            }
+        }
+    }
 }
 
 /******************* BLOCK 7 - Misc. Unsorted Functions *******************/
