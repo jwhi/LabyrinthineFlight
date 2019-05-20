@@ -9,7 +9,7 @@
     
         'worldTurn'
             TODO: Right now, new alpha values for the whole dungeon are being sent for the fov. Calculate which values were updated and just send the individual values that changed.
-
+            TODO: WorldTurnData includes all player information and uuid when all it needs to include is health (at this point in time.)
             Server handles are the FOV calculation. Received after every time a player makes a successful movement on the map.
             Server lag will lead the FOV not following the player and trailing behind.
             Handles enemy attacks and enemy movement
@@ -87,7 +87,7 @@ var gameMessages = [];
 
 // Map sprites stores all the map sprites currently drawn on the screen
 // Map alpha stores the opacity for each individual tile that handles the FOV effect
-var mapSprites = [], mapAlpha = [], enemySprites = [];
+var mapSprites = [], mapAlpha = [], enemySprites = [], dungeonLevelSprites = [];
 
 
 // Aliases
@@ -406,9 +406,15 @@ function setup() {
         // First dungeon packet from server contains the player's name and the game's save ID. Received once a new game begins or a player
         // loads a game. Display this information on the web page and save to the browser's local storage to allow the
         // user to load this game again in the future.
-        if (level.playerName && level.playerTitle) {
-            playerName = level.playerName;
-            playerTitle = level.playerTitle;
+        if (level.player && level.saveID) {
+            playerName = level.player.name;
+            playerTitle = level.player.title;
+
+            uuid = level.saveID;
+            document.getElementById('saveID').value = uuid;
+            setLocalStorageSaves(playerName, uuid);
+
+            updatePlayerData(level.player)
 
             if (searchGameMessages("Press right to select menu option.")) {
                 clearGameMessages();
@@ -421,15 +427,11 @@ function setup() {
                     addGameMessage("Arrow keys to navigate the dungeon. Use  .  and  ,  to navigate stairs.");
                 }
             }
+        } else {
+            // If the player isn't being updated, still need to update dungeon level in player info box.
+            updateDungeonLevel()
         }
-        
-        if (level.saveID) {
-            uuid = level.saveID;
-            document.getElementById('saveID').value = uuid;
-            setLocalStorageSaves(playerName, uuid);
-        }
-        
-        
+
         gameInfoApp.stage.addChild(infoTiles);
         infoRenderer.render(gameInfoApp.stage);
 
@@ -439,7 +441,6 @@ function setup() {
         state = play;
 
         renderer.render(app.stage);
-        console.log("Called render on app.stage")
     });
     
     // Server handles are the FOV calculation. Received after every time a player makes a successful movement on the map.
@@ -454,7 +455,7 @@ function setup() {
             var enemyLocation = { x: level.enemies[i].x, y: level.enemies[i].y };
             var playerDistanceFromEnemy = Math.ceil(Math.sqrt(Math.pow(playerLocation.x - enemyLocation.x, 2) + Math.pow(playerLocation.y - enemyLocation.y, 2)))
             if (playerDistanceFromEnemy < 6 && level.enemies[i].health > 0) {
-                console.log("Enemy is closer than 6 tiles away. Updating player location from server.");
+                // Enemy is closer than 6 tiles away. Updating player location from server.
                 enemyCloseToPlayer = true;
             }
         }
@@ -480,47 +481,7 @@ function setup() {
             });
         }
         if (worldTurnData.player && level) {
-            gameInfoApp.stage.removeChildren();
-            infoTiles = new PIXI.Container(); 
-            drawText2X(worldTurnData.player.name + ' ' + worldTurnData.player.title, 0, 0, tileSets ? 'orange' : 'blue', infoTiles);
-            var str = 'Dungeon Level: ' + (level.levelNumber + 1);
-            drawText2X(str, 0, 2*fontHeight, 'grey', infoTiles);
-            drawText2X('HP: ', 0, 2*fontHeight*2, 'grey', infoTiles);
-            drawText2X(worldTurnData.player.health.toString(), 2*fontSize*4, 2*fontHeight*2, 'white', infoTiles);
-            drawText2X('ATK: ', 2*fontSize*8, 2*fontHeight*2, 'grey', infoTiles);
-            drawText2X(worldTurnData.player.attack[0] + '-' + worldTurnData.player.attack[1], 2*13*fontSize, 2*fontHeight*2, 'white', infoTiles);
-            drawText2X('Save', 0, 2*fontHeight*3, tileSets ? 'orange' : 'blue', infoTiles);
-            drawInvisibleButton(0,2*fontHeight*3, 2*fontSize*4, 2*fontHeight, infoTiles, save);
-            
-            var playerTile = level.map[getPlayerX()+','+getPlayerY()];
-            if ((playerTile === '<') || (playerTile === '>')) {
-                var x = 2*fontSize*8;
-                var y = 2*fontHeight*3;
-                drawText2X('Use Stairs', x, y, tileSets ? 'orange' : 'blue', infoTiles);
-                drawInvisibleButton(x,y, 2*fontSize*10, 2*fontHeight, infoTiles, useStairs);
-            }
-            if (uuid) {
-                drawText(uuid, 0, 2*fontHeight*4.25, tileSets ? 'orange' : 'blue', infoTiles);
-                drawInvisibleButton(0, 2*fontHeight*4.25, uuid.length*fontSize, fontHeight, infoTiles, function() {
-                    if (isMobile) {
-                        prompt("Here is your game's save id! You can use this id to load your game from any browser.", uuid);
-                    } else {
-                        /* Get the text field */
-                        var copyText = document.getElementById("saveID");
-
-                        /* Select the text field */
-                        copyText.select();
-
-                        /* Copy the text inside the text field */
-                        document.execCommand("Copy");
-
-                        /* Alert the copied text */
-                        alert("Copied your game's save id! You can use this id to load your game from any browser.");
-                    }
-                });
-            }
-            gameInfoApp.stage.addChild(infoTiles);
-            infoRenderer.render(gameInfoApp.stage);
+            updatePlayerData(worldTurnData.player);
         }
         renderer.render(app.stage);
     });
@@ -979,8 +940,10 @@ function drawText(str, start_x, start_y, color, appContainer) {
  * @param start_x Starting x position of text based on the PIXI app coordinates
  * @param start_y Starting y position of text based on the PIXI app coordinates
  * @param color Selects the sprite sheet of the font to be used
+ * @returns Array of all the tiles drawn.
  */
 function drawText2X(str, start_x, start_y, color, appContainer) {
+    var textArray = [];
     if (color == null) {
         if (tileSets) {
             color = 'orange';
@@ -993,7 +956,7 @@ function drawText2X(str, start_x, start_y, color, appContainer) {
         lines.forEach(function(line, i) {
             // TODO: figure out why lineSpacing is shifting everything down or not being used at all
             // Replace the lineSpacing with a large int value (e.g. 800) to see shift effect
-            drawText(line, start_x, (start_y + lineSpacing) + (i * 2 * fontHeight), color, appContainer);
+            drawText2X(line, start_x, (start_y + lineSpacing) + (i * 2 * fontHeight), color, appContainer);
         });
     } else {
         font = PIXI.loader.resources['assets/' + color + '_font.json'].textures;
@@ -1027,9 +990,12 @@ function drawText2X(str, start_x, start_y, color, appContainer) {
             } else {
                 gameTiles.addChild(sprite);
             }
+            textArray.push(sprite)
             x += fontSize*2;
         }
-    }   
+    }
+    
+    return textArray;
 }
 
 function updateEnemySprites(enemyData) {
@@ -1065,6 +1031,64 @@ function updateMapFOV(alphaValues) {
             }
         }
     }
+}
+
+function updatePlayerData(playerInfo) {
+    gameInfoApp.stage.removeChildren();
+    infoTiles = new PIXI.Container(); 
+    drawText2X(playerInfo.name + ' ' + playerInfo.title, 0, 0, tileSets ? 'orange' : 'blue', infoTiles);
+    var str = 'Dungeon Level: ' + (level.levelNumber + 1);
+    dungeonLevelSprites = drawText2X(str, 0, 2*fontHeight, 'grey', infoTiles);
+    drawText2X('HP: ', 0, 2*fontHeight*2, 'grey', infoTiles);
+    drawText2X(playerInfo.health.toString(), 2*fontSize*4, 2*fontHeight*2, 'white', infoTiles);
+    drawText2X('ATK: ', 2*fontSize*8, 2*fontHeight*2, 'grey', infoTiles);
+    drawText2X(playerInfo.attack[0] + '-' + playerInfo.attack[1], 2*13*fontSize, 2*fontHeight*2, 'white', infoTiles);
+    drawText2X('Save', 0, 2*fontHeight*3, tileSets ? 'orange' : 'blue', infoTiles);
+    drawInvisibleButton(0,2*fontHeight*3, 2*fontSize*4, 2*fontHeight, infoTiles, save);
+    
+    var playerTile = level.map[getPlayerX()+','+getPlayerY()];
+    if ((playerTile === '<') || (playerTile === '>')) {
+        var x = 2*fontSize*8;
+        var y = 2*fontHeight*3;
+        drawText2X('Use Stairs', x, y, tileSets ? 'orange' : 'blue', infoTiles);
+        drawInvisibleButton(x,y, 2*fontSize*10, 2*fontHeight, infoTiles, useStairs);
+    }
+    if (uuid) {
+        drawText(uuid, 0, 2*fontHeight*4.25, tileSets ? 'orange' : 'blue', infoTiles);
+        drawInvisibleButton(0, 2*fontHeight*4.25, uuid.length*fontSize, fontHeight, infoTiles, function() {
+            if (isMobile) {
+                prompt("Here is your game's save id! You can use this id to load your game from any browser.", uuid);
+            } else {
+                /* Get the text field */
+                var copyText = document.getElementById("saveID");
+
+                /* Select the text field */
+                copyText.select();
+
+                /* Copy the text inside the text field */
+                document.execCommand("Copy");
+
+                /* Alert the copied text */
+                alert("Copied your game's save id! You can use this id to load your game from any browser.");
+            }
+        });
+    }
+    gameInfoApp.stage.addChild(infoTiles);
+    infoRenderer.render(gameInfoApp.stage);
+}
+
+// TODO: Can be improved so 'Dungeon Level: ' isn't drawn each time and we are just updating the floor numbers
+// Just need to figure out starting x location of the numbers and update the drawText2x calls.
+function updateDungeonLevel() {
+    // Remove the sprites that are the dungeon level number.
+    // level.levelNumber.toString().length is a hack to make sure to remove multiple digit floor numbers.
+    for (var i = 0; i < level.levelNumber.toString().length; i++) {
+        infoTiles.removeChild(dungeonLevelSprites.pop())
+    }
+    
+    var str = 'Dungeon Level: ' + (level.levelNumber + 1);
+    dungeonLevelSprites = drawText2X(str, 0, 2*fontHeight, 'grey', infoTiles);
+    infoRenderer.render(gameInfoApp.stage)
 }
 
 /******************* BLOCK 7 - Misc. Unsorted Functions *******************/

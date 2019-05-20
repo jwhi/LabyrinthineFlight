@@ -97,10 +97,7 @@ class Dungeon {
         return this.floors[this.floorNumber];
     }
 
-    getFloorDataForClient(options = {}) {
-        const {
-            includePlayerInfo = false
-        } = options;
+    getFloorDataForClient({includePlayerInfo = false} = {}) {
         var floor = this.getCurrentFloor();
         var returnObject = {
             map: floor.map,
@@ -111,9 +108,8 @@ class Dungeon {
             tileNames: floor.generateTileNames(),
             fov: this.mapAlphaValues(floor.playerX, floor.playerY)
         }
-        if (options.includePlayerInfo) {
-            returnObject.playerName = this.player.name;
-            returnObject.playerTitle = this.player.title;
+        if (includePlayerInfo) {
+            returnObject.player = this.player
         }
         return returnObject;
     }
