@@ -349,6 +349,7 @@ function setup() {
     socket.on('debug', function(message) {
         console.log(message);
     });
+    // TODO: dungeon and worldTurn should be a lot more clean. Initializing the game is so messy.
     // The dungeon object received from the server. Defined in the server's Rogue.js file
     // Dungeons are only received at the start of games and when player travels up or down a staircase.
     // Prints the maps layout to debug console for testing. Calls updateMap to to prepare drawing the map tiles.
@@ -376,6 +377,7 @@ function setup() {
         // Tile names are determined by the server since the function required function calls that could only be done by the server.
         // Received whenever the player starts a new game or uses stairs. Draw tiles once received and set the state to play after
         // all tiles are drawn to allow the user to start moving the player.
+        // TODO: Reduce memory of tiles. Find a way to have sprites as clones as each other instead of each an individual instance
         if (level.tileNames) {
             for (let y = 0; y < mapHeight; y++) {
                 for (let x = 0; x < mapWidth; x++) {
@@ -1086,8 +1088,9 @@ function updateDungeonLevel() {
         infoTiles.removeChild(dungeonLevelSprites.pop())
     }
     
-    var str = 'Dungeon Level: ' + (level.levelNumber + 1);
-    dungeonLevelSprites = drawText2X(str, 0, 2*fontHeight, 'grey', infoTiles);
+    // "Dungeon Level: ".length = 15. Multiply fontsize by 2 since using 200% scaled font sprites.
+    // 30*fontSize is starting x location for dungeon level number.
+    dungeonLevelSprites = drawText2X((level.levelNumber + 1).toString(), 30*fontSize, 2*fontHeight, 'grey', infoTiles);
     infoRenderer.render(gameInfoApp.stage)
 }
 
