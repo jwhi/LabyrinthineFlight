@@ -92,8 +92,8 @@ var mapSprites = [], mapAlpha = [], enemySprites = [], dungeonLevelSprites = [];
 
 // Aliases
 var Application = PIXI.Application,
-    loader = PIXI.loader,
-    resources = PIXI.loader.resources,
+    loader = new PIXI.Loader(),
+    resources = loader.resources,
     Sprite = PIXI.Sprite;
 
 // Number of tiles that make up the width and height of the Roguelike level
@@ -120,9 +120,11 @@ var buttonUp, buttonDown, buttonLeft, buttonRight;
 var appWidth = mapWidth * tileSize, appHeight = mapHeight * tileSize;
 
 
-var renderer = PIXI.autoDetectRenderer(appWidth, appHeight, null);
+// var renderer = PIXI.autoDetectRenderer(appWidth, appHeight, null);
+var renderer = new PIXI.Renderer({ width: appWidth, height: appHeight, transparent: true});
 // Info renderer should be able to fit 10 rows of text, but use drawText2X so only 5 rows fit.
-var infoRenderer = PIXI.autoDetectRenderer(appWidth, fontHeight * 10, null);
+// var infoRenderer = PIXI.autoDetectRenderer(appWidth, fontHeight * 10, null);
+var infoRenderer = new PIXI.Renderer({ width: appWidth, height: fontHeight * 10, transparent: true});
 // Message renderer will be using standard draw text so the height will determine how many
 // messages can be displayed at once.
 /*
@@ -131,8 +133,8 @@ var infoRenderer = PIXI.autoDetectRenderer(appWidth, fontHeight * 10, null);
  * function and CSS messy, so for now the messages will be under game info for everything and desktop
  * users will have to scroll down.
  */ 
-var messageRenderer = PIXI.autoDetectRenderer(appWidth, fontHeight * 20, null)
-
+// var messageRenderer = PIXI.autoDetectRenderer(appWidth, fontHeight * 20, null)
+var messageRenderer = new PIXI.Renderer({width: appWidth, height: fontHeight * 20, transparent: true})
 // Stores the game state used with PIXI.js
 var state = null;
 
@@ -191,8 +193,10 @@ let gameMessagesApp = new Application({
 
 
 // Texture loading of font and map sprite sheets.
-PIXI.loader
-    .add('level', 'assets/level_creatures.json')
+// This currently causes a large number of the warning "pixi.min.js:8 Texture added to the cache with an id 'text-id' that already had an entry"
+// This is caused by me using the same texture names in the JSON files.
+// Probably a new way I should be loading images in PIXI v5.
+loader.add('level', 'assets/level_creatures.json')
     .add('level_new', 'assets/level_creatures_new.json')
     .add(['assets/orange_font.json', 'assets/white_font.json', 'assets/grey_font.json', 'assets/blue_font.json', 'assets/red_font.json'])
     .load(setup);
@@ -526,7 +530,7 @@ function setup() {
     var levelTilesPack = 'level' + (tileSets ? '' : '_new');
     var doorTilePack = 'assets/openDoor' + (tileSets ? '' : '_new') + '.png';
     mapTiles = resources[levelTilesPack].textures;
-    openDoorTexture =  PIXI.Texture.fromImage(doorTilePack);
+    openDoorTexture =  PIXI.Texture.from(doorTilePack);
     // Resize the game window to the browser window so player does not need to scroll
     // to see the entire game board or find where the player is on the screen.
     if (isMobile) {
@@ -546,7 +550,7 @@ function switchGraphics() {
     var levelTilesPack = 'level' + (tileSets ? '' : '_new');
     var doorTilePack = 'assets/openDoor' + (tileSets ? '' : '_new') + '.png';
     mapTiles = resources[levelTilesPack].textures;
-    openDoorTexture =  PIXI.Texture.fromImage(doorTilePack);
+    openDoorTexture =  PIXI.Texture.from(doorTilePack);
 }
 
 /**
@@ -895,7 +899,7 @@ function drawText(str, start_x, start_y, color, appContainer) {
             drawText(line, start_x, (start_y + lineSpacing) + (i * fontHeight), color, appContainer);
         });
     } else {
-        font = PIXI.loader.resources['assets/' + color + '_font.json'].textures;
+        font = loader.resources['assets/' + color + '_font.json'].textures;
         let x = start_x, y = start_y;
         for (let i = 0, len = str.length; i < len; i++) {
             let character, charAt = str.charAt(i);
@@ -961,7 +965,7 @@ function drawText2X(str, start_x, start_y, color, appContainer) {
             drawText2X(line, start_x, (start_y + lineSpacing) + (i * 2 * fontHeight), color, appContainer);
         });
     } else {
-        font = PIXI.loader.resources['assets/' + color + '_font.json'].textures;
+        font = loader.resources['assets/' + color + '_font.json'].textures;
         let x = start_x, y = start_y;
         for (let i = 0, len = str.length; i < len; i++) {
             let character, charAt = str.charAt(i);
