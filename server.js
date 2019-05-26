@@ -175,14 +175,15 @@ io.on('connection', function(socket) {
                     }
                 });
             }
+            dungeon.mapAlphaValues()
             if (Object.keys(updatedMapTiles).length > 0) {
                 dungeon.player.x = dungeon.getCurrentFloor().playerX;
                 dungeon.player.y = dungeon.getCurrentFloor().playerY;
-                socket.emit('worldTurn', {enemies: dungeon.getCurrentFloor().enemies, fov: dungeon.mapAlphaValues(), map: updatedMapTiles, player: dungeon.player});
+                socket.emit('worldTurn', {enemies: dungeon.getCurrentFloor().enemies, fov: dungeon.getCurrentFloor().getDiffMapExplored(), map: updatedMapTiles, player: dungeon.player});
             } else {
                 dungeon.player.x = dungeon.getCurrentFloor().playerX;
                 dungeon.player.y = dungeon.getCurrentFloor().playerY;
-                socket.emit('worldTurn', {enemies: dungeon.getCurrentFloor().enemies, fov: dungeon.mapAlphaValues(), player: dungeon.player});
+                socket.emit('worldTurn', {enemies: dungeon.getCurrentFloor().enemies, fov: dungeon.getCurrentFloor().getDiffMapExplored(), player: dungeon.player});
             }
         } else {
             socket.emit('missing', 'no dungeon');        

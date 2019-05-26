@@ -8,7 +8,7 @@
             Combined playerInfo and tileName calls into this function and object.
     
         'worldTurn'
-            TODO: Right now, new alpha values for the whole dungeon are being sent for the fov. Calculate which values were updated and just send the individual values that changed.
+            Updated FOV! Previously, new alpha values for the whole dungeon are being sent for the fov. Calculate which values were updated and just send the individual values that changed.
             TODO: WorldTurnData includes all player information and uuid when all it needs to include is health (at this point in time.)
             Server handles are the FOV calculation. Received after every time a player makes a successful movement on the map.
             Server lag will lead the FOV not following the player and trailing behind.
@@ -1023,16 +1023,15 @@ function updateEnemySprites(enemyData) {
 }
 
 function updateMapFOV(alphaValues) {
-    for (var j = 0; j < mapHeight; j++) {
-        for (var i = 0; i < mapWidth; i++) {
-            var t = mapSprites[i+','+j];
-            if (t) {
-                t.alpha = alphaValues[i+','+j];
-                // TODO: Instead of setting the sprites alpha, set the sprites tint.
-                // This will improv visual effect of items and enemy's remains on explored tiles
-            }
+    Object.keys(alphaValues).forEach(key => {
+        // Key is in the format "x,y". e.g. "20,5"
+        var t = mapSprites[key]
+        if (t) {
+            t.alpha = alphaValues[key];
+            // TODO: Instead of setting the sprites alpha, set the sprites tint.
+            // This will improve visual effect of items and enemy's remains on explored tiles
         }
-    }
+    })
 }
 
 function updatePlayerData(playerInfo) {

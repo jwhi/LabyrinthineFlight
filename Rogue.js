@@ -99,6 +99,8 @@ class Dungeon {
 
     getFloorDataForClient({includePlayerInfo = false} = {}) {
         var floor = this.getCurrentFloor();
+        // Update FOV
+        this.mapAlphaValues(floor.playerX, floor.playerY)
         var returnObject = {
             map: floor.map,
             levelNumber: this.floorNumber,
@@ -106,7 +108,7 @@ class Dungeon {
             playerX: floor.playerX,
             playerY: floor.playerY,
             tileNames: floor.generateTileNames(),
-            fov: this.mapAlphaValues(floor.playerX, floor.playerY)
+            fov: floor.getDiffMapExplored()
         }
         if (includePlayerInfo) {
             returnObject.player = this.player
@@ -170,7 +172,10 @@ class Floor {
         this.playerY = null;
         this.levelNumber = levelNumber;
         this.enemies = [];
+        // Map Explored also contains the FOV for the player
         this.mapExplored = {};
+        // Difference between map explored from previous check is stored so we can do a comparison to only send updated values to client
+        this.diffMapExplored = null;
         
         if ((this.levelNumber+1)%5 == 0) {
         
@@ -282,6 +287,13 @@ class Floor {
     updateFOV(pX, pY) {
         var localMap = this.map;
         var localMapExplored = this.mapExplored;
+
+        
+        var previousMapExplored = {}
+        Object.keys(this.mapExplored).forEach(key => {
+            previousMapExplored[key] = this.mapExplored[key]
+        })
+
         // Player's field-of-view light input callback
         var lightPasses = function(x,y) {
             var key = x+","+y;
@@ -309,8 +321,34 @@ class Floor {
                 this.mapExplored[i+","+j] = tileAlpha;
             }
         }
+
+        if (this.diffMapExplored == null) {
+            this.diffMapExplored = this.mapExplored;
+        } else {
+            // Calculate which tiles had updated FOV values
+            var diff = {}
+
+            Object.keys(this.mapExplored).forEach(pos => {
+                if (this.mapExplored[pos] != previousMapExplored[pos]) {
+                    diff[pos] = this.mapExplored[pos];
+                }
+            });
+
+            if (Object.keys(diff).length > 0) {
+                // Only update when the diff is different to prevent deleting data not sent to player.
+                this.diffMapExplored = diff;
+            } else {
+                // FOV values are the same from previous turn.
+                this.diffMapExplored = {}
+            }
+        }
+
         return this.mapExplored;
     }
+    getDiffMapExplored() {
+        return this.diffMapExplored;
+    }
+
     getMap() {
         return this.map;
     }
