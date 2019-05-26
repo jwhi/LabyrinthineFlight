@@ -431,7 +431,16 @@ class Floor {
                 mapData = this.map[x+","+y];
                 switch (mapData) {
                     case ' ':
-                        tileName = 'monster 6';
+                        // This .join('').trim() will return an empty string if this is a map tile in the void.
+                        var surroundingTiles = [this.map[x+","+(y-1)], this.map[x+","+(y+1)], this.map[(x+1)+","+y], this.map[(x-1)+","+y],
+                                                this.map[(x+1)+","+(y-1)], this.map[(x+1)+","+(y+1)], this.map[(x-1)+","+(y-1)], this.map[(x-1)+","+(y+1)]].join('').trim();
+                        // If the surroundTiles includes a hallway tile or cave floor, draw the cave wall.
+                        if (surroundingTiles.includes(",") || surroundingTiles.includes("%")) {
+                            // Cave wall
+                            tileName = 'monster 6';
+                        } else {
+                            tileName = '';
+                        }
                         break;
                     case '.':
                         tileName = "floor_room";
@@ -491,7 +500,10 @@ class Floor {
                     default:
                         tileName = mapData;
                 }
-                tileNames[x+","+y] = tileName;
+                if (tileName) {
+                    // Only add the tile if it contains data.
+                    tileNames[x+","+y] = tileName;
+                }
             }
         }
         return tileNames;

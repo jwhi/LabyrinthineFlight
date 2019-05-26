@@ -349,7 +349,7 @@ function setup() {
     socket.on('debug', function(message) {
         console.log(message);
     });
-    // TODO: dungeon and worldTurn should be a lot more clean. Initializing the game is so messy.
+    // TODO: dungeon and worldTurn should be cleaner. Initializing the game is so messy.
     // The dungeon object received from the server. Defined in the server's Rogue.js file
     // Dungeons are only received at the start of games and when player travels up or down a staircase.
     // Prints the maps layout to debug console for testing. Calls updateMap to to prepare drawing the map tiles.
@@ -379,11 +379,11 @@ function setup() {
         // all tiles are drawn to allow the user to start moving the player.
         // TODO: Reduce memory of tiles. Find a way to have sprites as clones as each other instead of each an individual instance
         if (level.tileNames) {
-            for (let y = 0; y < mapHeight; y++) {
-                for (let x = 0; x < mapWidth; x++) {
-                    mapSprites[x+','+y] = placeTile(level.tileNames[x+','+y], x * tileSize, y * tileSize);
-                }
-            }
+            Object.keys(level.tileNames).forEach(key => {
+                var x, y;
+                [x,y] = key.split(',');
+                mapSprites[key] = placeTile(level.tileNames[key], x * tileSize, y * tileSize);
+            });
         }
     
         if (level.fov) {
@@ -1297,6 +1297,8 @@ function onButtonDown() {
 function onButtonUp() {
     this.alpha = 0;
     directionReleased();
+    // Used for the touch screen buttons
+    // Without calling the renderer, touch screen buttons stay on the screen after released.
     renderer.render(app.stage);
 }
 
