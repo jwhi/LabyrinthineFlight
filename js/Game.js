@@ -166,12 +166,19 @@ var gameMenuTiles = new PIXI.Container();
 // Holds the socket that handles communication with the server from Socket.IO. Set in the setup function along with the socket's listening events.
 var socket;
 
+
+// Stop PIXI ticker.
+const ticker = PIXI.Ticker.shared;
+ticker.autoStart = false;
+ticker.stop();
+
 let app = new Application({
     width: appWidth,
     height: appHeight,
     antialias: true,
     transparent: false,
-    resolution: 1
+    resolution: 1,
+    sharedTicker: true
 });
 
 let gameInfoApp = new Application({
@@ -179,7 +186,8 @@ let gameInfoApp = new Application({
     height: fontHeight * 10,
     antialias: true,
     transparent: false,
-    resolution: 1
+    resolution: 1,
+    sharedTicker: true
 });
 
 let gameMessagesApp = new Application({
@@ -187,7 +195,8 @@ let gameMessagesApp = new Application({
     height: fontHeight * 20,
     antialias: true,
     transparent: false,
-    resolution: 1
+    resolution: 1,
+    sharedTicker: true
 });
 
 
@@ -515,7 +524,7 @@ function setup() {
     // Start the game loop by adding the `gameLoop` function to
     // Pixi's `ticker` and providing it with a 'delta' argument
     app.ticker.add(delta=>gameLoop(delta));
-
+    
     // Add the canvases that Pixi created to the HTML document
     // These three screens will handle rendering different parts of the game
     document.getElementById('gameScreen').appendChild(renderer.view);
@@ -565,6 +574,7 @@ function gameLoop(delta) {
     // before the game is ready.
     if (state)
         state(delta);
+    ticker.stop();
 }
 
 function updateMenu() {
@@ -808,6 +818,7 @@ function play(delta) {
                 player.vy = yDirectionHeld; 
                 xDirectionHeld = 0;
                 yDirectionHeld = 0;
+                ticker.start();
             
             }, heldButtonDelay);
         }
@@ -1577,6 +1588,7 @@ function directionReleased() {
     inputObject.vy = 0;
 }
 function directionPressed(direction) {
+    ticker.start();
     clearTimeout(timeoutFunction);
     var inputObject;
     if (state == menu) {
