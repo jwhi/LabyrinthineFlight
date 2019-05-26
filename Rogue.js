@@ -99,8 +99,6 @@ class Dungeon {
 
     getFloorDataForClient({includePlayerInfo = false} = {}) {
         var floor = this.getCurrentFloor();
-        // Update FOV
-        this.mapAlphaValues(floor.playerX, floor.playerY)
         var returnObject = {
             map: floor.map,
             levelNumber: this.floorNumber,
@@ -108,7 +106,7 @@ class Dungeon {
             playerX: floor.playerX,
             playerY: floor.playerY,
             tileNames: floor.generateTileNames(),
-            fov: floor.getDiffMapExplored()
+            fov: this.mapAlphaValues(floor.playerX, floor.playerY)
         }
         if (includePlayerInfo) {
             returnObject.player = this.player
