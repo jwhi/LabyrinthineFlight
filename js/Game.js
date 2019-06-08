@@ -45,7 +45,7 @@
 
 // Currently the tiles used are 64x64 pixels. Originally 16x16 but PIXI.js
 // had issues with scaling sprites that small
-const tileSize = 64;
+const tileSize = 32;
 
 // Width and height in pixels of the textures used for fonts
 const fontSize =  24;
@@ -71,7 +71,7 @@ const defaultName = 'Prisoner';
 var level;
 
 // Variable that determines which graphics the player wants to use. True for Loveable Rogue by Surt. Cancel to use Tiny 16 by Lanea Zimmerman
-var tileSets = false;
+var tileSets = true;
 
 // Stores the player's name after a new game is started or a game is loaded from the server
 var playerName = '';
@@ -98,7 +98,7 @@ var Application = PIXI.Application,
 
 // Number of tiles that make up the width and height of the Roguelike level
 // Unsure what is optimal for performance but still creates a fun map to play
-var mapWidth = 50,
+var mapWidth = 35,
     mapHeight = 35;
 
 // If running on a mobile phone, will add buttons for navigation
@@ -151,7 +151,7 @@ var timeoutFunction;
 
 // Stores the PIXI loader for all the map textures, except for open doors which I
 // patched in on the go and haven't had the chance to merge it into the spritesheet.
-var mapTiles, openDoorTexture;
+var mapTiles;
 
 // PIXI can store sprites in a container. This allows all game sprites to be deleted
 // and redrawn easily after a player changes floors
@@ -205,11 +205,16 @@ let gameMessagesApp = new Application({
 // This currently causes a large number of the warning "pixi.min.js:8 Texture added to the cache with an id 'text-id' that already had an entry"
 // This is caused by me using the same texture names in the JSON files.
 // Probably a new way I should be loading images in PIXI v5.
+/*
 loader.add('level', 'assets/level_creatures.json')
     .add('level_new', 'assets/level_creatures_new.json')
     .add(['assets/orange_font.json', 'assets/white_font.json', 'assets/grey_font.json', 'assets/blue_font.json', 'assets/red_font.json'])
     .load(setup);
-
+*/
+loader.add('level', 'assets/1bit2x-expanded.json')
+    .add('level_new', 'assets/level_creatures_new.json')
+    .add(['assets/orange_font.json', 'assets/white_font.json', 'assets/grey_font.json', 'assets/blue_font.json', 'assets/red_font.json'])
+    .load(setup);
 
 /**
  * setup
@@ -391,11 +396,12 @@ function setup() {
         // Received whenever the player starts a new game or uses stairs. Draw tiles once received and set the state to play after
         // all tiles are drawn to allow the user to start moving the player.
         // TODO: Reduce memory of tiles. Find a way to have sprites as clones as each other instead of each an individual instance
-        if (level.tileNames) {
-            Object.keys(level.tileNames).forEach(key => {
+        if (level.tileData) {
+            Object.keys(level.tileData).forEach(key => {
                 var x, y;
                 [x,y] = key.split(',');
-                mapSprites[key] = placeTile(level.tileNames[key], x * tileSize, y * tileSize);
+                var tileSprite = placeTile(level.tileData[key], x * tileSize, y * tileSize);
+                mapSprites[key] = tileSprite;
             });
         }
     
@@ -491,7 +497,7 @@ function setup() {
             Object.keys(worldTurnData.map).forEach(function(key) {
                 level.map[key] = worldTurnData.map[key];
                 if (level.map[key] == '-') {
-                    mapSprites[key].texture = openDoorTexture;
+                    mapSprites[key].texture = mapTiles['doorOpen'];
                 }
             });
         }
@@ -537,9 +543,9 @@ function setup() {
     // mapTiles is alias for all the texture atlas frame id textures
     // openDoorTexture is the texture swapped on the canvas when a player steps on a door tile
     var levelTilesPack = 'level' + (tileSets ? '' : '_new');
-    var doorTilePack = 'assets/openDoor' + (tileSets ? '' : '_new') + '.png';
+    // var doorTilePack = 'assets/openDoor' + (tileSets ? '' : '_new') + '.png';
     mapTiles = resources[levelTilesPack].textures;
-    openDoorTexture =  PIXI.Texture.from(doorTilePack);
+    // openDoorTexture =  PIXI.Texture.from(doorTilePack);
     // Resize the game window to the browser window so player does not need to scroll
     // to see the entire game board or find where the player is on the screen.
     if (isMobile) {
@@ -549,7 +555,10 @@ function setup() {
     }
     addGameMessage("Press right to select menu option.");
     updateMenu();
-    state = menu;
+    // TODO: Fix this to go back to the menu
+    // state = menu
+    //state = play;
+    socket.emit('new game', defaultName);
 }
 
 /******************* BLOCK 4 - Menu Functions *******************/
@@ -557,9 +566,9 @@ function setup() {
 function switchGraphics() {
     tileSets = !tileSets;
     var levelTilesPack = 'level' + (tileSets ? '' : '_new');
-    var doorTilePack = 'assets/openDoor' + (tileSets ? '' : '_new') + '.png';
+    // var doorTilePack = 'assets/openDoor' + (tileSets ? '' : '_new') + '.png';
     mapTiles = resources[levelTilesPack].textures;
-    openDoorTexture =  PIXI.Texture.from(doorTilePack);
+    // openDoorTexture =  PIXI.Texture.from(doorTilePack);
 }
 
 /**
@@ -800,7 +809,7 @@ function play(delta) {
             socket.emit('playerTurn', {x: player_x, y: player_y});
             if (level.map[player_x+','+player_y] === '+') {
                 level.map[player_x+','+player_y] = '-';
-                mapSprites[player_x+','+player_y].texture = openDoorTexture;
+                mapSprites[player_x+','+player_y].texture = mapTiles['doorOpen'];
             }
         
             // Renderer is updated when the game receives updated FOV from player
@@ -843,7 +852,7 @@ function canWalk(x, y) {
     }
 
     switch (level.map[x+','+y]) {
-        case ' ':
+        case '&':
         case '#':
             return false;
         default:
@@ -865,9 +874,7 @@ function canWalk(x, y) {
  */
 function placeTile(tileName, x, y, appContainer) {
     var tile = null;
-    if (tileName == 'openDoor') {
-        tile = new Sprite(openDoorTexture);
-    } else if (tileName !== ' ') {
+    if (tileName !== ' ') {
         tile = new Sprite(mapTiles[tileName]);
     }
     if (tile) {
@@ -973,7 +980,7 @@ function drawText2X(str, start_x, start_y, color, appContainer) {
         lines.forEach(function(line, i) {
             // TODO: figure out why lineSpacing is shifting everything down or not being used at all
             // Replace the lineSpacing with a large int value (e.g. 800) to see shift effect
-            drawText2X(line, start_x, (start_y + lineSpacing) + (i * 2 * fontHeight), color, appContainer);
+            drawText2X(line, start_x, (start_y + lineSpacing) + (i * fontHeight), color, appContainer);
         });
     } else {
         font = loader.resources['assets/' + color + '_font.json'].textures;
@@ -1000,7 +1007,7 @@ function drawText2X(str, start_x, start_y, color, appContainer) {
 
             let sprite = new Sprite(font[character + '.png']);
             
-            sprite.scale.set(2);
+            //sprite.scale.set(2);
             sprite.position.set(x, y);
             if (appContainer) {
                 appContainer.addChild(sprite);
@@ -1008,7 +1015,7 @@ function drawText2X(str, start_x, start_y, color, appContainer) {
                 gameTiles.addChild(sprite);
             }
             textArray.push(sprite)
-            x += fontSize*2;
+            x += fontSize; //*2;
         }
     }
     
@@ -1054,13 +1061,13 @@ function updatePlayerData(playerInfo) {
     infoTiles = new PIXI.Container(); 
     drawText2X(playerInfo.name + ' ' + playerInfo.title, 0, 0, tileSets ? 'orange' : 'blue', infoTiles);
     var str = 'Dungeon Level: ' + (level.levelNumber + 1);
-    dungeonLevelSprites = drawText2X(str, 0, 2*fontHeight, 'grey', infoTiles);
+    dungeonLevelSprites = drawText2X(str, 0, fontHeight, 'grey', infoTiles);
     drawText2X('HP: ', 0, 2*fontHeight*2, 'grey', infoTiles);
-    drawText2X(playerInfo.health.toString(), 2*fontSize*4, 2*fontHeight*2, 'white', infoTiles);
-    drawText2X('ATK: ', 2*fontSize*8, 2*fontHeight*2, 'grey', infoTiles);
-    drawText2X(playerInfo.attack[0] + '-' + playerInfo.attack[1], 2*13*fontSize, 2*fontHeight*2, 'white', infoTiles);
-    drawText2X('Save', 0, 2*fontHeight*3, tileSets ? 'orange' : 'blue', infoTiles);
-    drawInvisibleButton(0,2*fontHeight*3, 2*fontSize*4, 2*fontHeight, infoTiles, save);
+    drawText2X(playerInfo.health.toString(), 2*fontSize*4, fontHeight*2, 'white', infoTiles);
+    drawText2X('ATK: ', 2*fontSize*8, fontHeight*2, 'grey', infoTiles);
+    drawText2X(playerInfo.attack[0] + '-' + playerInfo.attack[1], 13*fontSize, 2*fontHeight*2, 'white', infoTiles);
+    drawText2X('Save', 0, fontHeight*3, tileSets ? 'orange' : 'blue', infoTiles);
+    drawInvisibleButton(0,2*fontHeight*3, fontSize*4, 2*fontHeight, infoTiles, save);
     
     var playerTile = level.map[getPlayerX()+','+getPlayerY()];
     if ((playerTile === '<') || (playerTile === '>')) {

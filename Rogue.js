@@ -36,8 +36,6 @@ fs.readFile('nicknames.txt', function(err, data) {
     nicknameData = data.split(os.EOL);
 });
 
-
-
 function getPlayerName() {
     while(!malePlayerNameData || !femalePlayerNameData) {}
     if (Math.round(Math.random())) {
@@ -59,7 +57,7 @@ function getPlayerTitle() {
     return ('the ' + adjective + ' ' + nickname);
 }
 
-const mapWidth = 50;
+const mapWidth = 35;
 const mapHeight = 35;
 
 const playerFOVRadius = 8;
@@ -105,7 +103,7 @@ class Dungeon {
             enemies: floor.enemies,
             playerX: floor.playerX,
             playerY: floor.playerY,
-            tileNames: floor.generateTileNames(),
+            tileData: floor.generateTileData(),
             fov: this.mapAlphaValues(floor.playerX, floor.playerY)
         }
         if (includePlayerInfo) {
@@ -235,20 +233,16 @@ class Floor {
             }
         }
 
-        for (var j = 0; j < this.height; j++) {
-            for (var i = 0; i < this.width; i++) {
-                if(this.map[i +","+j] === " ") {
-                    if (
-                        (this.map[(i+1)+","+j] === ".") ||
-                        (this.map[(i-1)+","+j] === ".") ||
-                        (this.map[i+","+(j+1)] === ".") ||
-                        (this.map[i+","+(j-1)] === ".") ||
-                        (this.map[(i+1)+","+(j+1)] === ".") ||
-                        (this.map[(i+1)+","+(j-1)] === ".") ||
-                        (this.map[(i-1)+","+(j+1)] === ".") ||
-                        (this.map[(i-1)+","+(j-1)] === ".")) {
-                            // If a blank tile has a floor tile around it, then the blank tile needs to be a wall
-                            this.map[i +","+j] = "#";
+        for (var y = 0; y < this.height; y++) {
+            for (var x = 0; x < this.width; x++) {
+                if(this.map[x +","+y] === " ") {
+                    var surroundingTiles = [this.map[x+","+(y-1)], this.map[x+","+(y+1)], this.map[(x-1)+","+y], this.map[(x+1)+","+y],
+                                                this.map[(x+1)+","+(y-1)], this.map[(x+1)+","+(y+1)], this.map[(x-1)+","+(y-1)], this.map[(x-1)+","+(y+1)]].join('').trim();
+                    if (surroundingTiles.includes(".")) {
+                        // If a blank tile has a floor tile around it, then the blank tile needs to be a wall
+                        this.map[x +","+y] = "#";
+                    } else if (surroundingTiles.includes(",") || surroundingTiles.includes("%")) {
+                        this.map[x+","+y] = "&";
                     }
                 }
             }
@@ -386,7 +380,7 @@ class Floor {
         }
 
         switch (this.map[x+","+y]) {
-            case ' ':
+            case '&':
             case '#':
                 return false;
             default:
@@ -418,51 +412,160 @@ class Floor {
         }
         return null;
     }
-    generateTileNames() {
+    generateTileData() {
         // Instead of placing individual tiles, store all tile sprites together in an array
         // in the layout of map[x+","+y] with the key being tile coordinates. This will allow
         // easier updating of an individual tiles alpha value.
-        var tileNames = {};
-        var tileName = "";
+
+
+        /*
+
+        Logic for new tile names.
+        Create dictionary if possible. Would need to allow wildcards or subsets
+        Not sure if better to create custom class, database, or rely on other methods.
+        Dictionary string would be 8 digits long that represent all surround tiles (9x9 grid with tile getting name for in center)
+        |0|1|2|
+        |3|X|4|
+        |5|6|7|
+
+        TODO: Rotation of tiles that require it will need to have their pivot x and y values set to 16, middle of sprite
+
+        FLOOR DECORATIONS
+        wall_borders floor tiles (low percentage):
+            Check wall and door location
+            | wall locations  | tile name       |
+            | wall (x-1)(y+1) | floor_border_NW |
+            | wall ( x )(y+1) | floor_border_N  |
+            | wall (x+1)(y+1) | floor_border_NE |
+            | wall (x-1)( y ) | floor_border_W  |
+            | wall (x+1)( y ) | floor_border_E  |
+            | wall (x-1)(y-1) | floor_border_SW |
+            | wall ( x )(y-1) | floor_border_S  |
+            | wall (x+1)(y-1) | floor_border_SE |
+
+            floor_border_ + join()
+                if wall(y+1) N
+                if wall(y-1) S
+                if wall(x+1) E
+                if wall(x-1) W
+
+        if no surrounding walls (use NSEW joined screen from above)
+            Choose secondary floor texture
+                floor_1-8
+
+        if hall_way:
+            cave_floor_1-3 and prioritize lower numbers
+
+        if cave_floor:
+            cave_floor_2-6 and prioritize higher numbers
+
+
+
+        */
+
+
+        var mapTileData = {};
+        var tileData = {};
         var mapData = ' ';
+        var localMap = this.map;
 
         for (let y = 0; y < mapHeight; y++) {
             for (let x = 0; x < mapWidth; x++) {
                 mapData = this.map[x+","+y];
                 switch (mapData) {
-                    case ' ':
+                    case '&':
+                        /*
+                        This code block is trying to figure out making caves walls that work like the connecting room walls.
+
                         // This .join('').trim() will return an empty string if this is a map tile in the void.
-                        var surroundingTiles = [this.map[x+","+(y-1)], this.map[x+","+(y+1)], this.map[(x+1)+","+y], this.map[(x-1)+","+y],
-                                                this.map[(x+1)+","+(y-1)], this.map[(x+1)+","+(y+1)], this.map[(x-1)+","+(y-1)], this.map[(x-1)+","+(y+1)]].join('').trim();
-                        // If the surroundTiles includes a hallway tile or cave floor, draw the cave wall.
-                        if (surroundingTiles.includes(",") || surroundingTiles.includes("%")) {
-                            // Cave wall
-                            tileName = 'monster 6';
+                        // TODO: This doesn't work when one of these tiles is null!
+                        function getMapTile(x, y) {
+                            var tile = localMap[x+","+y];
+                            if (tile)
+                                return tile
+                            return " "
+                        }
+                        var surroundingTiles = [getMapTile(x,y-1), getMapTile(x,y+1), getMapTile(x-1,y), getMapTile(x+1,y),
+                                            getMapTile(x+1,y-1), getMapTile(x+1,y+1), getMapTile(x-1,y-1), getMapTile(x-1,y+1)].join('');
+                        
+                        
+                        var countCaveFloors = (surroundingTiles.substring(0,4).match(/,/g) || []).length;
+                        if (countCaveFloors == 0) {
+                            // If the cave floor doesn't have an immediate neighbor, then it is a corner piece so check diagonal tiles.
+                            countCaveFloors = (surroundingTiles.substring(4).match(/,/g) || []).length;
+                        }
+                        var surroundingWalls = "";
+                        if (countCaveFloors == 1) {
+                            // This will give location of the closest cave floor tile that the wall should be positioned around.
+                            var floorLocation = surroundingTiles.indexOf(",");
+
+                            var caveWallSpriteFromFloor = {
+                                0: 'EW',
+                                1: 'EW',
+                                2: 'NS',
+                                3: 'NS',
+                                4: 'SW',
+                                5: 'NW',
+                                6: 'SE',
+                                7: 'NE'
+                            }
+
+                            tileData = "cave_wall_" + caveWallSpriteFromFloor[floorLocation];
+                            //console.log(`Cave wall tile: ${tileData}`);
                         } else {
-                            tileName = '';
+                            if (surroundingTiles[0] == ',') {
+                                surroundingWalls += "N"
+                            }
+                            if (surroundingTiles[1] == ',') {
+                                surroundingWalls += "S"
+                            }
+                            if (surroundingTiles[3] == ',') {
+                                surroundingWalls += "E"
+                            }
+                            if (surroundingTiles[2] == ',') {
+                                surroundingWalls += "W"
+                            }
+
+                            tileData = "cave_wall_" + surroundingWalls;
+                        }
+
+
+                        // TODO: Create an object with all the valid floor names and check against it.
+                        var validTiles = ["cave_wall_NS", "cave_wall_EW", "cave_wall_NW", "cave_wall_NE", "cave_wall_SE", "cave_wall_SW", "cave_wall_NSE", "cave_wall_SEW", "cave_wall_NSW", "cave_wall_NEW", "cave_wall_NSEW"]
+
+                        if (!tileData || validTiles.indexOf(tileData) == -1) {
+                            console.log(`map position ${x},${y} has invalid tile name: ${tileData}`);
+                            tileData = "player_defeated"
+                        }
+                        */
+                        var randomNumberBasedOnMapLocation = this.chooseTexture(x,y, 100);
+                        if (randomNumberBasedOnMapLocation < 80) {
+                            tileData = "cave_wall_1";
+                        } else {
+                            tileData = "cave_wall_2";
                         }
                         break;
                     case '.':
-                        tileName = "floor_room";
+                        tileData = "room_floor_" + this.chooseTexture(x,y, 7);
                         break;
                     case ',':
-                        tileName = "floor_hallway";
+                        tileData = "cave_floor_" + this.chooseTexture(x,y, 4);
                         break;
                     case '>':
-                        tileName = "stairs_down";
+                        tileData = "stairs_down";
                         break;
                     case '<':
-                        tileName = "stairs_up";
+                        tileData = "stairs_up";
                         break;
                     case '+':
-                        tileName = "door";
+                        tileData = "door";
                         break;
                     case '-':
-                        tileName = "openDoor";
+                        tileData = "doorOpen";
                         break;
                     case '%':
                         // Cave floor
-                        tileName = "trap";
+                        tileData = "cave";
                         break;
                     case '#':
                         // Surround Tiles is an array of the results from checking if the tiles surrounding a wall are in rooms or not.
@@ -470,43 +573,59 @@ class Floor {
                         // Order is in 0)N, 1)S, 2)E, 3)W, 4)NE, 5)NW, 6)SE, 7)SW
                         var surroundingTiles = [this.inRoom(x,(y-1)), this.inRoom(x,(y+1)), this.inRoom((x+1),y), this.inRoom((x-1),y),
                                                 this.inRoom((x+1),(y-1)), this.inRoom((x-1),(y-1)), this.inRoom((x+1),(y+1)), this.inRoom((x-1),(y+1)) ];
-                        tileName = "";
+                        var name = "";
                         if (!surroundingTiles[0] && (surroundingTiles[2] + surroundingTiles[3] + surroundingTiles[4] + surroundingTiles[5])) {
                             // If there is a room to the East or West of the wall, it's a wall that connects on the North and South side.
-                            tileName += "N";
+                            name += "N";
                         } else {
-                            tileName += "_";
+                            name += "_";
                         }
 
                         if (!surroundingTiles[1] && (surroundingTiles[2] + surroundingTiles[3] + surroundingTiles[6] + surroundingTiles[7])){
                             // If there is a room to the East or West of the wall, it's a wall that connects on the North and South side.
-                            tileName += "S";
+                            name += "S";
                         } else {
-                            tileName += "_";
+                            name += "_";
                         }
                         if (!surroundingTiles[2] && (surroundingTiles[0] + surroundingTiles[1] + surroundingTiles[4] + surroundingTiles[6])) {
                             // If there is a room to the East or West of the wall, it's a wall that connects on the North and South side.
-                            tileName += "E";
+                            name += "E";
                         } else {
-                            tileName += "_";
+                            name += "_";
                         }
                         if (!surroundingTiles[3] && (surroundingTiles[0] + surroundingTiles[1] + surroundingTiles[5] + surroundingTiles[7])) {
                             // If there is a room to the East or West of the wall, it's a wall that connects on the North and South side.
-                            tileName += "W";
+                            name += "W";
                         } else {
-                            tileName += "_";
+                            name += "_";
                         }
+                        tileData = name;
                         break;
                     default:
-                        tileName = mapData;
+                        tileData = mapData;
                 }
-                if (tileName) {
+                if (tileData) {
                     // Only add the tile if it contains data.
-                    tileNames[x+","+y] = tileName;
+                    mapTileData[x+","+y] = tileData;
                 }
             }
         }
-        return tileNames;
+        return mapTileData;
+    }
+    
+    chooseTexture(x, y, z) {
+        // https://stackoverflow.com/questions/12964279/whats-the-origin-of-this-glsl-rand-one-liner
+        // x and y in the below equation should be divided by total height or width so that way x and y
+        // will always be between 0 and 1.
+        var number = (Math.sin((x/this.width)*12.9898 + (y/this.height)*78.233) * 43758.5453) % 1;
+        //console.log(number);
+        var newNumber = Math.abs(Math.floor(number*z))+1;
+        
+        if (newNumber > z) {
+            return newNumber - z;
+        } else {
+            return newNumber;
+        }
     }
 }
 
@@ -571,5 +690,4 @@ class Enemy {
         return this.path;
     }
 }
-
 module.exports = { Dungeon, Floor, Enemy, getPlayerName, getPlayerTitle };

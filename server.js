@@ -93,7 +93,7 @@ io.on('connection', function(socket) {
     socket.on('request', function(data) {
         switch(data) {
             case 'tileNames':
-                socket.emit('tileNames', dungeon.getCurrentFloor().generateTileNames());
+                socket.emit('tileData', dungeon.getCurrentFloor().generateTileData());
                 break;
             case 'floor down':
                 dungeon.gotoFloor(dungeon.floorNumber + 1, "up");
