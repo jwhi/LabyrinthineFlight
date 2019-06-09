@@ -2,6 +2,17 @@
 
 Currently refactoring since most of the code base was created for a project. Decisions made during that time, many parts of the project were implemented in the fastest way to have as many features as possible by presentation date. However, adding new core features that are necessary for a fun experience is nearly impossible. Hoping to create a more module and efficient codebase once this refactor is complete.
 
+## Next features to add
+1. Town that serves as starting point of adventure that lets player choose supplies/class.
+    1. Add NPC's and dialogue/barter screens
+    2. Implement item system, player inventory
+2. Finish adding basic combat
+    1. Enemies AI needs updated so they don't chase player from the start
+    2. Enemy attacks are varied and damage is properly calculated.
+    2. Varied enemies
+    3. Critical hit chances
+    4. Enemy inventory
+    
 ## Refactor plan.
 1. Reduce all the data being written to and from the server. Less data needing to be transfer will lower cost of hosting and improve user experience.
     1. Rewrote these functions. Can be improved but major issues were fixed. Could still improve how games are initialized.
