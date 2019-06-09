@@ -539,10 +539,10 @@ class Floor {
                         }
                         */
                         var randomNumberBasedOnMapLocation = this.chooseTexture(x,y, 100);
-                        if (randomNumberBasedOnMapLocation < 80) {
-                            tileData = "cave_wall_1";
+                        if (randomNumberBasedOnMapLocation < 90) {
+                            tileData = "hallway_wall_1";
                         } else {
-                            tileData = "cave_wall_2";
+                            tileData = "hallway_wall_2";
                         }
                         break;
                     case '.':
