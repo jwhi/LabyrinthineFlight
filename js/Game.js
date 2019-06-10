@@ -1033,25 +1033,37 @@ function updateEnemySprites(enemyData) {
                 enemySprites[i].tint = 0xFFFFFF;
                 enemySprites[i].texture = mapTiles['corpse'];
             }
-            if (mapSprites[currentEnemy.x+','+currentEnemy.y].alpha == 1) {
+            var map_tile = mapSprites[currentEnemy.x+','+currentEnemy.y];
+            if (map_tile.tint == 0xFFFFFF && map_tile.alpha == 1) {
                 enemySprites[i].alpha = 1;
             } else {
                 enemySprites[i].alpha = 0;
             }
         } else {
-            enemySprites[i].alpha = mapSprites[currentEnemy.x+','+currentEnemy.y].alpha;
+            // enemySprites[i].alpha = mapSprites[currentEnemy.x+','+currentEnemy.y].alpha;
+            enemySprites[i].tint = mapSprites[currentEnemy.x+','+currentEnemy.y].tint;
         }
     }
 }
 
 function updateMapFOV(alphaValues) {
+    alphaToTintDict = {
+        1: 0xFFFFFF,
+        0.4: 0x333333
+    }
     Object.keys(alphaValues).forEach(key => {
         // Key is in the format "x,y". e.g. "20,5"
         var t = mapSprites[key]
         if (t) {
-            t.alpha = alphaValues[key];
             // TODO: Instead of setting the sprites alpha, set the sprites tint.
             // This will improve visual effect of items and enemy's remains on explored tiles
+            if (alphaValues[key] != 0) {
+                t.alpha = 1;
+                t.tint = alphaToTintDict[alphaValues[key]];
+            }
+            else {
+                t.alpha = 0;
+            }
         }
     })
 }
