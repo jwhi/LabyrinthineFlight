@@ -854,6 +854,7 @@ function canWalk(x, y) {
     switch (level.map[x+','+y]) {
         case '&':
         case '#':
+        case '%':
             return false;
         default:
             return true;

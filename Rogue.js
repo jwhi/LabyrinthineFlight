@@ -3,6 +3,20 @@ const ROT = require('rot-js');
 const fs = require('fs');
 var os = require('os');
 
+// #: Room wall
+// &: Hallway wall
+// %: Cave wall
+const WALL_TILES = ['#', '&', '%'];
+
+// .: Room floor
+// ,: Hallway floor
+// `: Cave floor
+const FLOOR_TILES = ['.', ',', '`'];
+
+// +: Closed door
+// -: Open door
+const OTHER_WALKABLE_TILES = ['+', '-'];
+
 var sg = new ROT.StringGenerator();
 
 var nameFile = '';
@@ -187,7 +201,8 @@ class Floor {
             for (var j = 0; j < height; j++) {
                 for (var i = 0; i < width; i++) {
                     if (cellMap._map[i][j]) {
-                        this.map[i+','+j] = '%';
+                        // Cave floor
+                        this.map[i+','+j] = '`';
                     } else {
                         this.map[i+','+j] = ' '
                     }
@@ -197,7 +212,8 @@ class Floor {
             var digger = new ROT.Map.Digger(width, height, {roomWidth:[3,7], roomHeight:[3,7], corridorLength:[2,10], dugPercentage:0.2});
             var digCallback = function(x,y, value) {
                 var key = x + "," + y;
-                if (value) { if (this.map[x+','+y] != '%') { this.map[key] = ' ';}}
+                // Only add room wall if there isn't a cave floor there.
+                if (value) { if (this.map[x+','+y] != '`') { this.map[key] = ' ';}}
                 else { this.map[key] = ".";}// Walls: ' ' Floor: '.'
             }
         } else {        
@@ -241,8 +257,11 @@ class Floor {
                     if (surroundingTiles.includes(".")) {
                         // If a blank tile has a floor tile around it, then the blank tile needs to be a wall
                         this.map[x +","+y] = "#";
-                    } else if (surroundingTiles.includes(",") || surroundingTiles.includes("%")) {
+                    } else if (surroundingTiles.includes(",")) {
+                        // If the surrounding tile includes a hallway or a cave floor, add a cave wall.
                         this.map[x+","+y] = "&";
+                    } else if (surroundingTiles.includes("`")) {
+                        this.map[x+","+y] = "%";
                     }
                 }
             }
@@ -269,7 +288,7 @@ class Floor {
         this.placeEnemies();
         this.dijkstra = new ROT.Path.Dijkstra(this.playerX, this.playerY, function (x, y) {
             if (this.map) {
-                return ((this.map[x+','+y] === '.') || (this.map[x+','+y] === ',') || (this.map[x+','+y] === '-') || (this.map[x+','+y] === '+') || (this.map[x+','+y] === '%'))
+                return ((this.map[x+','+y] === '.') || (this.map[x+','+y] === ',') || (this.map[x+','+y] === '-') || (this.map[x+','+y] === '+') || (this.map[x+','+y] === '`'))
             } else {
                 return false;
             }
@@ -289,7 +308,7 @@ class Floor {
         // Player's field-of-view light input callback
         var lightPasses = function(x,y) {
             var key = x+","+y;
-            if (key in localMap) { return ((localMap[key] == ".") || (localMap[key] == ",") || localMap[key] == "-" || localMap[key] == "<" || localMap[key] == ">" || localMap[key] == "%"); }
+            if (key in localMap) { return ((localMap[key] == ".") || (localMap[key] == ",") || localMap[key] == "-" || localMap[key] == "<" || localMap[key] == ">" || localMap[key] == "`"); }
             return false;
         }
         
@@ -380,8 +399,12 @@ class Floor {
         }
 
         switch (this.map[x+","+y]) {
+            // Hallway Wall
             case '&':
+            // Room Wall
             case '#':
+            // Cave Wall
+            case '%':
                 return false;
             default:
                 return true;
@@ -459,6 +482,45 @@ class Floor {
         if cave_floor:
             cave_floor_2-6 and prioritize higher numbers
 
+
+            TODO: Modify the map creation and tiles to add cave walls.
+            % is the cave floor tiles.
+                     #####  %%%%%#####&&
+                    #...# %%`````...+,&
+                    #...# %``````...`,&
+                    #...# %%`````...`,&
+                    #...#  %%%%%`````,&
+                &&#...#&&&&&&&&&```,&
+            %%%&,+...+,,,,,,,,,&%&,&
+            %%``&,#...#&&######+##&,&
+            %```&,#####  #.......+,,&
+        %%%  %``%&,&      #.......#&&&
+        %%`%% %``%&,&      #.......#   
+        %```% %``%&,&      #.......#   
+    %%```% %%%%&,&    %%#.......#   
+    %```%%     &,&   %%``.......#   
+    %```%      &,&   %```+#######   
+    %```%      &,&   %```,&%        
+    %%%%%#######+#####%``,`%        
+            #....#......#%%`,&%        
+            #....#......# %&,&         
+    %%%%%  #....+...<..#  &,&         
+    %```%  ######......#  &,&         
+    %```%       #......#  &,&         
+    %%`%%   %%% ########  &,&   ##### 
+    %%%    %`%%       ####+#   #...# 
+            %``%       #....#%  #.>.# 
+            %`%%       #....`%  #...# 
+            %%%        #....#%#####+# 
+                    %#....# #.....# 
+                    %%``+### #.....# 
+                    %```,&%  #.....# 
+        %%%        %```,`%% #.....# 
+        %%`%%       %%``,``% #.....# 
+        %```%        %%`,`&&&##+#### 
+        %```%         %&,,,,,,,,&    
+        %%%%%          &&&&&&&&&&        
+                                                    
 
 
         */
@@ -563,7 +625,7 @@ class Floor {
                     case '-':
                         tileData = "doorOpen";
                         break;
-                    case '%':
+                    case '`':
                         // Cave floor
                         tileData = "cave";
                         break;
@@ -601,6 +663,51 @@ class Floor {
                         }
                         tileData = name;
                         break;
+                    case '%':
+                            function getMapTile(x, y) {
+                                var tile = localMap[x+","+y];
+                                if (tile)
+                                    return tile
+                                return " "
+                            }
+                            var surroundingTiles = [getMapTile(x,y-1), getMapTile(x,y+1), getMapTile(x+1,y), getMapTile(x-1,y)];
+                            
+                            var connectedWalls = '';
+
+                            if (WALL_TILES.includes(surroundingTiles[0])) {
+                                connectedWalls += 'N';
+                            }
+                            if (WALL_TILES.includes(surroundingTiles[1])) {
+                                connectedWalls += 'S';
+                            }
+                            if (WALL_TILES.includes(surroundingTiles[2])) {
+                                connectedWalls += 'E';
+                            }
+                            if (WALL_TILES.includes(surroundingTiles[3])) {
+                                connectedWalls += 'W';
+                            }
+                            
+                            tileData = "cave_wall_" + connectedWalls;
+                            
+                            var validTiles = [
+                                "cave_wall_NS",
+                                "cave_wall_EW",
+                                "cave_wall_SE",
+                                "cave_wall_SW",
+                                "cave_wall_NW",
+                                "cave_wall_NE",
+                                "cave_wall_NEW",
+                                "cave_wall_NSE",
+                                "cave_wall_SEW",
+                                "cave_wall_NSW",
+                                "cave_wall_NSEW"
+                            ];
+                            if (!validTiles.includes(tileData)) {
+                                console.log(`ERROR: Invalid tile at ${x},${y}: ${tileData}`)
+                                tileData = "door_floor_wear_1";
+                            }
+                            
+                            break;
                     default:
                         tileData = mapData;
                 }
@@ -675,7 +782,7 @@ class Enemy {
     calculateMove(playerX, playerY, map) {
         var dijkstra = new ROT.Path.Dijkstra(playerX, playerY, function (x, y) {
             if (map) {
-                return ((map[x+','+y] === '.') || (map[x+','+y] === ',') || (map[x+','+y] === '-') || (map[x+','+y] === '+') || (map[x+','+y] === '%'))
+                return ((map[x+','+y] === '.') || (map[x+','+y] === ',') || (map[x+','+y] === '-') || (map[x+','+y] === '+') || (map[x+','+y] === '`'))
             } else {
                 return false;
             }
