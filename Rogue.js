@@ -82,7 +82,7 @@ class Dungeon {
         if (floorNumber) {
             this.floorNumber = floorNumber;
         } else {
-            this.floorNumber = 0;
+            this.floorNumber = 4;
         }
         if (furthestFloor) {
             this.furthestFloor = furthestFloor;
@@ -672,22 +672,40 @@ class Floor {
                             }
                             var surroundingTiles = [getMapTile(x,y-1), getMapTile(x,y+1), getMapTile(x+1,y), getMapTile(x-1,y)];
                             
-                            var connectedWalls = '';
+                            var connectedWalls = ['', '', '', ''];
+                            // Trying to find the best wall to connect cave wall sprites.
 
-                            if (WALL_TILES.includes(surroundingTiles[0])) {
-                                connectedWalls += 'N';
+                            // First check for any nearby cave walls that this tile should connect to
+                            if (surroundingTiles[0] == '%') {
+                                connectedWalls[0] = 'N';
                             }
-                            if (WALL_TILES.includes(surroundingTiles[1])) {
-                                connectedWalls += 'S';
+                            if (surroundingTiles[1] == '%') {
+                                connectedWalls[1] = 'S';
                             }
-                            if (WALL_TILES.includes(surroundingTiles[2])) {
-                                connectedWalls += 'E';
+                            if (surroundingTiles[2] == '%') {
+                                connectedWalls[2] = 'E';
                             }
-                            if (WALL_TILES.includes(surroundingTiles[3])) {
-                                connectedWalls += 'W';
+                            if (surroundingTiles[3] == '%') {
+                                connectedWalls[3] = 'W';
+                            }
+
+                            // If the tile could only connect to 1 cave wall, try to see if there are other wall tiles nearby to connect to
+                            if (connectedWalls.join('').trim().length <= 1) {
+                                if (WALL_TILES.includes(surroundingTiles[0])) {
+                                    connectedWalls[0] = 'N';
+                                }
+                                if (WALL_TILES.includes(surroundingTiles[1])) {
+                                    connectedWalls[1] = 'S';
+                                }
+                                if (WALL_TILES.includes(surroundingTiles[2])) {
+                                    connectedWalls[2] = 'E';
+                                }
+                                if (WALL_TILES.includes(surroundingTiles[3])) {
+                                    connectedWalls[3] = 'W';
+                                }
                             }
                             
-                            tileData = "cave_wall_" + connectedWalls;
+                            tileData = "cave_wall_" + connectedWalls.join('').trim();
                             
                             var validTiles = [
                                 "cave_wall_NS",
