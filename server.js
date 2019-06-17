@@ -10,6 +10,9 @@ const PORT = 3000;
 
 app.use('/js',express.static(__dirname + '/js'));
 app.use('/assets',express.static(__dirname + '/assets'));
+app.get('/map', function(req, res) {
+    res.sendFile(__dirname + '/map.html');
+})
 app.get('/', function(req, res) {
     res.sendFile(__dirname + '/index.html');
 });
