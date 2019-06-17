@@ -26,6 +26,8 @@
         Every time the player starts the game, goes up/down a level, changes position.
 
 
+    New Player View:
+        Larger maps will be possible if the camera is more zoomed in on the player and allows the player to move around the map.
 */
 
 
@@ -98,8 +100,8 @@ var Application = PIXI.Application,
 
 // Number of tiles that make up the width and height of the Roguelike level
 // Unsure what is optimal for performance but still creates a fun map to play
-var mapWidth = 35,
-    mapHeight = 35;
+var mapWidth = 75,
+    mapHeight = 40;
 
 // If running on a mobile phone, will add buttons for navigation
 // and create smaller map.
