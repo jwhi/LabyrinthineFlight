@@ -897,7 +897,7 @@ function placeTile(tileName, x, y, appContainer) {
  * Draws text using the orange font that is with loveable rogue-like tiles.
  * str is the string you want to draw and x and y are the starting positions for the text.
  * Color is just limited to orange, white, grey, and blue right now. Based on the textures
- * proved by Loveable Rogue by Surt. Orange and blue are the only ones programmed currently
+ * provided by Loveable Rogue by Surt. Orange and blue are the only ones programmed currently
  * because that is all I needed for loading and error screens with the two graphic sets.
  * @param str The string to be drawn to the screen. Accepts new line characters.
  * @param start_x Starting x position of text based on the PIXI app coordinates
@@ -961,7 +961,7 @@ function drawText(str, start_x, start_y, color, appContainer) {
  * Draws text using the font that is included with loveable rogue-like tiles.
  * str is the string you want to draw and x and y are the starting positions for the text.
  * Color is just limited to orange, white, grey, and blue right now. Based on the textures
- * proved by Loveable Rogue by Surt. Orange and blue are the only ones programmed currently
+ * provided by Loveable Rogue by Surt. Orange and blue are the only ones programmed currently
  * because that is all I needed for loading and error screens with the two graphic sets.
  * @param str The string to be drawn to the screen. Accepts new line characters.
  * @param start_x Starting x position of text based on the PIXI app coordinates
