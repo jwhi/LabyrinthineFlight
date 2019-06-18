@@ -108,6 +108,8 @@ let gameInfoApp = new Application({
     sharedTicker: true
 });
 
+var townSprite;
+
 
 // Texture loading of font and map sprite sheets.
 // This currently causes a large number of the warning "pixi.min.js:8 Texture added to the cache with an id 'text-id' that already had an entry"
@@ -122,6 +124,7 @@ loader.add('level', 'assets/level_creatures.json')
 loader.add('level', 'assets/1bit2x-expanded.json')
     .add('characters', 'assets/df-font.json')
     .add(['assets/blue_font.json'])
+    .add('town', 'assets/starting-town2x-transparent.png')
     .load(setup);
 
 
@@ -167,8 +170,19 @@ function setup() {
 
     state = play;
 
-    renderer.render(app.stage);
+    
+    var townTexture = resources['town'].texture;
 
+    townSprite = new Sprite(townTexture);
+
+    townSprite.position.set(0, 0);
+    townSprite.alpha = 1;
+    
+    gameTiles.addChild(townSprite);
+    
+    app.stage.addChild(gameTiles);
+
+    renderer.render(app.stage);
 
     /******************* BLOCK 3 - Initialize Game Loop and Add Game Elements to Page *******************/
     // Start the game loop by adding the `gameLoop` function to
@@ -180,8 +194,6 @@ function setup() {
     document.getElementById('gameScreen').appendChild(renderer.view);
     document.getElementById('gameInfo').appendChild(infoRenderer.view);
 
-
-    app.ticker.add(delta=>gameLoop(delta));
 
     //screenWithText('Welcome to Labyrinthine Flight!', 'white');
     resize();
@@ -229,6 +241,8 @@ function play(delta) {
         infoRenderer.render(gameInfoApp.stage);
 
         selectedTileChanged = false;
+
+        renderer.render(app.stage);
     }
 }
 
