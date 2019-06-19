@@ -1,4 +1,11 @@
 /*
+
+    This is hacked together from Game.js to make creating the map data for the town easier since that is needed for
+    collision, player field-of-view, and so many other things. The code and comments are not clean or the best, but
+    it works for the purpose I needed it and just built it as quick as possible.
+
+
+
     CODE BLOCKS:
     BLOCK 1 - Variables and setup
     BLOCK 2 - Socket.IO Data Received Functions
@@ -428,8 +435,35 @@ function setup() {
 
     drawText("Load", 25*tileSize, 9*tileSize, "blue", infoTiles);
     drawInvisibleButton(25*tileSize, 9*tileSize, 4*fontSize, fontHeight, infoTiles, function() {
+        asciiMapTiles = new PIXI.Container();
         createdAsciiMap = getLocalStorageSave();
+        for (var y = 0; y < mapHeight; y++) {
+            for (var x = 0; x < mapWidth; x++) {
+                if (createdAsciiMap[x+","+y]) {
+                    var asciiNumber = Object.keys(asciiCharacters).find(key => asciiCharacters[key] === createdAsciiMap[x+","+y]);
+                    asciiSpriteMapTiles[x+','+y] = placeTile(characterSprites, asciiNumber, x*tileSize, y*tileSize, asciiMapTiles)
+                } else {
+                   asciiSpriteMapTiles[x+","+y] = placeTile(characterSprites, '0', x*tileSize, y*tileSize, asciiMapTiles);
+                }
+            }
+        }
+        asciiMapTiles.children.forEach(c =>{
+            c.buttonMode = true;
+            c.interactive = true;
+            c.on('mousedown', function() {
+                var x = new Sprite(characterSprites[selectedCharacterTileName]);
+                this.texture = x.texture;
+                c.position.set(this.x, this.y)
+                asciiSpriteMapTiles[this.x/tileSize+","+this.y/tileSize] = c;
+                createdAsciiMap[this.x/tileSize+","+this.y/tileSize] = asciiCharacters[selectedCharacterTileName];
+                renderer.render(app.stage);
+            });
+        });
+        app.stage.removeChildAt(1);
+        app.stage.addChild(asciiMapTiles);
+        renderer.render(app.stage);
         console.log("Load successful.")
+        
         // Update map sprites
         console.log(mapDataToJson());
 
