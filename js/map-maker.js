@@ -426,6 +426,23 @@ function setup() {
         });
     });
 
+    drawText("Load", 25*tileSize, 9*tileSize, "blue", infoTiles);
+    drawInvisibleButton(25*tileSize, 9*tileSize, 4*fontSize, fontHeight, infoTiles, function() {
+        createdAsciiMap = getLocalStorageSave();
+        console.log("Load successful.")
+        // Update map sprites
+        console.log(mapDataToJson());
+
+    });
+
+    drawText("Save", 35*tileSize, 9*tileSize, "blue", infoTiles);
+    drawInvisibleButton(35*tileSize, 9*tileSize, 4*fontSize, fontHeight, infoTiles, function() {
+        var jsonStringMapData = mapDataToJson();
+        console.log("Saving.");
+        console.log(jsonStringMapData);
+        setSaveLocalStorage(jsonStringMapData);
+    });
+
     drawText("Selected Tile: ", 25*tileSize, 7*tileSize, "blue", infoTiles);
     var initialSelectedTile = placeTile(characterSprites, selectedCharacterTileName, selectedTileX, selectedTileY, infoTiles);
     
@@ -461,8 +478,6 @@ function setup() {
             asciiSpriteMapTiles[this.x/tileSize+","+this.y/tileSize] = c;
             createdAsciiMap[this.x/tileSize+","+this.y/tileSize] = asciiCharacters[selectedCharacterTileName];
             renderer.render(app.stage);
-            console.log(c);
-            console.log(this);
         });
     });
     gameTiles.addChild(asciiMapTiles);
@@ -519,8 +534,6 @@ function gameLoop(delta) {
  */
 function play(delta) {
     if (selectedTileChanged) {
-        console.log("Updating tile.");
-
         //gameInfoApp.stage.removeChildren();
         //gameInfoApp.addChild(infoTiles);
         infoTiles.removeChildAt(infoTiles.children.length-1);
@@ -710,58 +723,6 @@ function updateMapFOV(alphaValues) {
 
 /******************* BLOCK 7 - Misc. Unsorted Functions *******************/
 
-/*
- * addGameMessage
- * Adds a message to the message window which displays the last 10 messages
- */
-function addGameMessage(messageText, color = 'grey') {
-    if (!messageText || typeof messageText != "string") {
-        console.log('Error: ' + messageText + ' is not a valid message to display.');
-        return;
-    }
-
-    // Add message to global variable holding the current games message text.
-    // Think about adding floor number to messages so player can see where they were when they received it.
-    gameMessages.push({text: messageText, color: color});
-
-    // Clear old messages from the screen.
-    // TODO: Instead of removing all messages each time, move the old messages and only draw the new one.
-    // Then delete the messages that occur off-screen.
-    messageTiles = new PIXI.Container(); 
-    gameMessagesApp.stage.removeChildren(); 
-
-    var messageY = 0;
-
-    var startIndex = 0;
-
-    if (gameMessages.length > 10) {
-        startIndex = gameMessages.length - 10;
-    }
-
-    for (var i = startIndex; i < gameMessages.length; i++) {
-        drawText(gameMessages[i].text, 0, messageY, gameMessages[i].color, messageTiles);
-        messageY += fontHeight;
-    }
-
-    gameMessagesApp.stage.addChild(messageTiles);
-    messageRenderer.render(gameMessagesApp.stage);
-}
-
-function clearGameMessages() {
-    gameMessages = [];
-    gameMessagesApp.stage.removeChildren();
-    messageRenderer.render(gameMessagesApp.stage);
-}
-
-function searchGameMessages(text) {
-    for (var i = 0; i < gameMessages.length; i++) {
-        if (text == gameMessages[i].text) {
-            return true;
-        }
-    }
-
-    return false;
-}
 
 function drawInvisibleButton(x, y, width, height, appContainer, pressedFunction, releasedFunction) {
     var newButton = new PIXI.Graphics();
@@ -906,4 +867,64 @@ function printMapToConsole() {
             str += '\n';
         }
         console.log(str);
+}
+
+
+function mapDataToJson() {
+    Object.keys(createdAsciiMap).forEach(key => {
+        if (createdAsciiMap[key] === ' ' || createdAsciiMap[key] == "") {
+            delete createdAsciiMap[key];
+        }
+    });
+
+    return JSON.stringify(createdAsciiMap);
+
+}
+
+
+function getLocalStorageSave() {
+    var storage = localStorage.getItem('map_make_save');
+    if (storage) {
+        return JSON.parse(storage);
+    }
+    
+    return {};
+}
+
+function setSaveLocalStorage(saveInfo) {
+    localStorage.setItem('map_make_save', saveInfo);
+}
+
+/**
+ * checkStorageCompatibility
+ * Checks to see if the client's browser supports using local storage. If not, player will
+ * have to keep track of their saves themselves. If the browser does support local storage,
+ * then players can have their browser store their recently made map.
+ * @returns true if the client's browser supporses local storage, false if the browser does not.
+ */
+function checkStorageCompatibility() {
+    if (typeof(Storage) !== 'undefined') {
+        return true;
+    } else {
+        return false;
+    }
+}
+
+function drawInvisibleButton(x, y, width, height, appContainer, pressedFunction, releasedFunction) {
+    var newButton = new PIXI.Graphics();
+    newButton.beginFill(0x404040);
+    newButton.drawPolygon([
+        x,y,
+        x,y+height,
+        x+width,y+height,
+        x+width,y
+    ]);
+    newButton.endFill();
+    newButton
+        .on('pointerdown', (event) => { if(event.target) {if (pressedFunction) {pressedFunction()}}})
+        .on('pointerup', (event) => { if(event.target) {if (releasedFunction) {releasedFunction()}}});
+    newButton.alpha = 0;
+    newButton.interactive = true;
+    newButton.buttonMode = true;
+    appContainer.addChild(newButton);
 }
