@@ -13,8 +13,6 @@
 /* PIXI.js Aliases */
 
 const Application = PIXI.Application;
-const Loader = new PIXI.Loader();
-const Resources = Loader.resources;
 const Sprite = PIXI.Sprite;
 
 
@@ -39,6 +37,9 @@ let timeoutFunction;
 
 /* Sprite Objects */
 
+let loader = new PIXI.Loader();
+let resources = loader.resources;
+
 // Map sprites stores all the map sprites currently drawn on the screen
 let mapSprites = [];
 
@@ -48,7 +49,7 @@ let gameTiles = new PIXI.Container();
 let infoTiles = new PIXI.Container();
 
 // Stores the PIXI loader for all the map textures, initiated in setup function.
-let mapTiles;
+let mapTextures;
 
 
 /* Graphic Renderers */
@@ -67,6 +68,9 @@ let menuScreen = 'main';
 
 // Holds the socket that handles communication with the server from Socket.IO. Set in the setup function along with the socket's listening events.
 let socket;
+
+// Define Labyrinthine Flight game object, will be assigned when level loads from data with server.
+let labyrinthineFlight;
 
 /* Graphics Setup */
 
@@ -91,7 +95,7 @@ let gameInfoApp = new Application({
 // Texture loading of font and map sprite sheets. Calls setup function after textures are loaded.
 // This currently causes a large number of the warning "pixi.min.js:8 Texture added to the cache with an id 'text-id' that already had an entry"
 // This is caused by me using the same texture names in the JSON font files.
-Loader.add('kenney-1bit', 'assets/1bit2x-expanded.json')
+loader.add('kenney-1bit', 'assets/1bit2x-expanded.json')
       .add(['assets/orange_font.json', 'assets/white_font.json', 'assets/grey_font.json', 'assets/blue_font.json', 'assets/red_font.json'])
       .load(setup);
 
@@ -168,14 +172,38 @@ function setup() {
     });
     // The dungeon object received from the server. Defined in the server's Rogue.js file
     // Dungeons are only received at the start of games and when player travels up or down a staircase.
-    socket.on('dungeon', function(dungeonFloor) {
-        /**
-         * Clear the screen.
-         * Save game data to LabyrinthineFlight object
+    socket.on('dungeon', function(gameData) {
+        
+        /* Clear the screen */
+        clearApplication(gameApp);
+        clearApplication(gameInfoApp);
+
+        /* Save game data to LabyrinthineFlight object */
+        labyrinthineFlight = new LabyrinthineFlight(gameData.map, gameData.player);
+        
+        /*
          * Draw map/player/enemy/item sprites to the screen.
          * Sprites' alpha/tint reflect player's field-of-vision
-         * Store the game's save id in local storage
-         * Add game messages
+         */
+        if (labyrinthineFlight.map.floorNumber > 0) {
+            /* All floor numbers above 0 are dungeon levels. */
+        } else {
+            /* Floor 0 is the starting town. */
+            var townTexture = resources['town'].texture;
+            townSprite = new Sprite(townTexture);
+            townSprite.position.set(0, 0);
+            gameTiles.addChild(townSprite);
+        }
+
+        // Draw items
+
+        // Draw NPCs
+
+        // Draw enemies
+
+        // Draw player
+
+        /*
          * Display player's info
          * Set application state to 'play'
          */
@@ -233,8 +261,8 @@ function setup() {
     // Only supporting one for the time being.
     var levelTilesPack = 'kenney-1bit';
     
-    // mapTiles is alias for all the texture atlas frame id textures
-    mapTiles = resources[levelTilesPack].textures;
+    // mapTextures is alias for all the texture atlas frame id textures
+    mapTextures = resources[levelTilesPack].textures;
     
     /**
      * Direct the application to go to the main menu
@@ -300,7 +328,7 @@ function play(delta) {
 }
 
 function placeMapTile(tileName, x, y) {
-    return placeTile(GameTiles, MapTextures, tileName, x, y);
+    return placeTile(gameTiles, mapTextures, tileName, x, y);
 }
 
 /**
