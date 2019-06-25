@@ -8,10 +8,14 @@
  *
  */
 
-/* Game Constants */
-
-const mapWidth = 75;
-const mapHeight = 40;
+class LabyrinthineFlight {
+    constructor(map, player, ) {
+        this.width = 75;
+        this.mapHeight = 40;
+        this.map = map;
+        this.player 
+    }
+}
 
 
 /* Map Functions */

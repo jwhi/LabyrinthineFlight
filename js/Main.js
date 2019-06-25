@@ -9,73 +9,68 @@
  *
  */
 
+
+/* PIXI.js Aliases */
+
+const Application = PIXI.Application;
+const Loader = new PIXI.Loader();
+const Resources = Loader.resources;
+const Sprite = PIXI.Sprite;
+
+
 /* Sprite Constants */
 
 // Size of sprites used on the game map
-const tileSize = 32;
+const TILE_SIZE = 32;
 
 // Size of individual sprites of characters in color-font spritesheets.
-const fontWidth = 24;
-const fontHeight = 32;
-
-
-/* Storage Constant */
-
-// Max number of saves to be displayed in the client's game window. Fully customizable but setting this number too large
-// can make the alert window be overwhelming for users.
-const maxSaves = 5;
+const FONT_WIDTH = 24;
+const FONT_HEIGHT = 32;
 
 
 /* User-Input Variables */
 
 // These variables allow players to hold down buttons to help navigate the map faster
-var xDirectionHeld = 0, yDirectionHeld = 0;
-var directionKeyHeld = '';
-var timeoutFunction;
-
-
-/* PIXI.js Aliases */
-
-var Application = PIXI.Application,
-    loader = new PIXI.Loader(),
-    resources = loader.resources,
-    Sprite = PIXI.Sprite;
+let xDirectionHeld = 0;
+let yDirectionHeld = 0;
+let directionKeyHeld = '';
+let timeoutFunction;
 
 
 /* Sprite Objects */
 
 // Map sprites stores all the map sprites currently drawn on the screen
-var mapSprites = [], enemySprites = [];
+let mapSprites = [];
 
 // PIXI can store sprites in a container. This allows all game sprites to be deleted
 // and redrawn easily after a player changes floors
-var gameTiles = new PIXI.Container();
-var infoTiles = new PIXI.Container();
+let gameTiles = new PIXI.Container();
+let infoTiles = new PIXI.Container();
 
 // Stores the PIXI loader for all the map textures, initiated in setup function.
-var mapTiles;
+let mapTiles;
 
 
 /* Graphic Renderers */
 
-var renderer = new PIXI.Renderer({ width: appWidth, height: appHeight, transparent: true});
-var infoRenderer = new PIXI.Renderer({ width: appWidth, height: fontHeight * 10, transparent: true});
+let renderer = new PIXI.Renderer({ width: appWidth, height: appHeight, transparent: true});
+let infoRenderer = new PIXI.Renderer({ width: appWidth, height: fontHeight * 10, transparent: true});
 
 
 /* App Variables */
 
 // This can equal a function that will be executed in the main application loop.
-var state = null;
+let state = null;
 
 // Initial screen players will see when the enter a menu is the main game menu.
-var menuScreen = 'main';
+let menuScreen = 'main';
 
 // Holds the socket that handles communication with the server from Socket.IO. Set in the setup function along with the socket's listening events.
-var socket;
+let socket;
 
 /* Graphics Setup */
 
-let app = new Application({
+let gameApp = new Application({
     width: appWidth,
     height: appHeight,
     antialias: true,
@@ -96,9 +91,9 @@ let gameInfoApp = new Application({
 // Texture loading of font and map sprite sheets. Calls setup function after textures are loaded.
 // This currently causes a large number of the warning "pixi.min.js:8 Texture added to the cache with an id 'text-id' that already had an entry"
 // This is caused by me using the same texture names in the JSON font files.
-loader.add('kenney-1bit', 'assets/1bit2x-expanded.json')
-    .add(['assets/orange_font.json', 'assets/white_font.json', 'assets/grey_font.json', 'assets/blue_font.json', 'assets/red_font.json'])
-    .load(setup);
+Loader.add('kenney-1bit', 'assets/1bit2x-expanded.json')
+      .add(['assets/orange_font.json', 'assets/white_font.json', 'assets/grey_font.json', 'assets/blue_font.json', 'assets/red_font.json'])
+      .load(setup);
 
 /**
  * setup
@@ -302,4 +297,41 @@ function play(delta) {
      *      a. Retrieves data from server for interaction (if not stored locally)
      *      b. End's player turn if player moved or attacked and will have server return enemy movements and other updates. 
      */
+}
+
+function placeMapTile(tileName, x, y) {
+    return placeTile(GameTiles, MapTextures, tileName, x, y);
+}
+
+/**
+ * placeTile
+ * @param {PIXI.Container} spriteContainer PIXI container to draw the application.
+ * @param {!Object<Sprite>} textureResource Map with keys assigned to Sprite objects in texture atlas. 
+ * @param {string} tileName Name of the tile to be drawn. Can be found in the sprite sheets JSON
+ * @param {number} x The X position the tile will be drawn on the PIXI application window
+ * @param {number} y The Y position the tile will be drawn on the PIXI application window
+ * @returns the placed tile so the tile can be assigned to a list to allow the alpha value to be updated.
+ */
+function placeTile(spriteContainer, textureResource, tileName, x, y) {
+    var tile = new Sprite(textureResource[tileName]);
+    if (tile) {
+        tile.position.set(x, y);
+        tile.alpha = 0;
+        spriteContainer.addChild(tile);
+    }
+    return tile;
+}
+
+/**
+ * clearApplication
+ * Removes all sprites from the PIXI.js application. This is used whenever the
+ * map needs to update when the player changes levels or whenever a new screen
+ * needs to be created.
+ * @param {PIXI.Application} app 
+ */
+function clearApplication(app) {
+    app.stage.children.forEach(c => {
+        c.removeChildren();
+    });
+    app.stage.removeChildren();
 }

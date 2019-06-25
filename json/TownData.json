@@ -75,79 +75,91 @@
    "interactables": {
       "_comment": "Items the player can interact with that have unique descriptions and actions.",
       "signs": {
-         "sign1": {
+         "10,13": {
             "text": "Blacksmith",
             "description": "An old but sturdy sign.",
-            "x": 10,
-            "y": 13
+            "interacted": false 
          },
-         "sign2": {
+         "14,23": {
             "text": "Alchemist",
             "description": "An old but sturdy sign.",
-            "x": 14,
-            "y": 23
+            "interacted": false
          },
-         "sign3": {
+         "37,16": {
             "text": "Tavern and Inn",
             "description": "An old but sturdy sign.",
-            "x": 37,
-            "y": 16
+            "interacted": false
          },
-         "sign4": {
+         "33,26": {
             "text": "Your house",
             "description": "A terrible and barely legible sign.",
-            "x": 33,
-            "y": 26
+            "interacted": false
          },
-         "sign5": {
+         "55,16": {
             "text": "Church",
             "description": "A beautiful sign that looks recently built.",
-            "x": 55,
-            "y": 16
+            "interacted": false
          },
-         "sign6": {
+         "52,26": {
             "text": "Old Castle Ruins.",
             "description": "An old sign that is barely standing.",
-            "x": 52,
-            "y": 26
+            "interacted": false
          },
-         "tombstone1": {
+         "50,5": {
             "text": "Town Person",
             "description": "An old tombstone.",
-            "x": 50,
-            "y": 5
+            "interacted": false
          },
-         "tombstone2": {
+         "51,6": {
             "text": "Town Person",
             "description": "An old tombstone.",
-            "x": 51,
-            "y": 6
+            "interacted": false
          },
-         "tombstone3": {
+         "52,4": {
             "text": "Town Person",
             "description": "An old tombstone.",
-            "x": 52,
-            "y": 4
+            "interacted": false
          },
-         "tombstone4": {
+         "56,5": {
             "text": "Town Person",
             "description": "An old tombstone.",
-            "x": 56,
-            "y": 5
+            "interacted": false
          },
-         "tombstone5": {
+         "58,5": {
             "text": "Town Person",
             "description": "An old tombstone.",
-            "x": 58,
-            "y": 5
+            "interacted": false
          }
       },
       "books": {
-         "tutorial": {
+         "30,28": {
             "name": "Tutorial",
             "author": "Jeremy White",
-            "x": 30,
-            "y": 28
+            "contents": {},
+            "interacted": false
+         }
+      },
+      "doors": {
+         "13,24": {
+            "locked": false
+         },
+         "32,27": {
+            "locked": false
+         },
+         "54,15": {
+            "locked": false
+         },
+         "36,15": {
+            "locked": false
+         },
+         "31,12": {
+            "locked": false
+         },
+         "31,8": {
+            "locked": false
+         },
+         "9,14": {
+            "locked": false
          }
       }
    },
