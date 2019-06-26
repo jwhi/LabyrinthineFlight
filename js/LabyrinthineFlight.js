@@ -1,3 +1,4 @@
+'use strict';
 /**
  * LabyrinthineFlight.js
  * 
@@ -59,5 +60,28 @@ class Map {
         // If map tile is not walkable, return false
         // If tile is occupied, return false
         // Else return true
+    }
+}
+
+class Interactable {
+    constructor() {
+        // Interacted bool
+        // Description string
+    }
+}
+
+class Book extends Interactable {
+    constructor() {
+        // Title
+        // Author
+        // Contents
+        super();
+    }
+}
+
+class Sign extends Interactable {
+    constructor() {
+        // Contents
+        super();
     }
 }
