@@ -65,8 +65,10 @@ class Map {
 
 class Interactable {
     constructor() {
+        // Name
         // Interacted bool
         // Description string
+        // Default interacted function
     }
 }
 
